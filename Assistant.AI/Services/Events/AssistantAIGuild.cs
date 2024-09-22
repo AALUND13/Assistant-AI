@@ -1,0 +1,109 @@
+﻿using AssistantAI.Services.Interfaces;
+using AssistantAI.Utilities.Extension;
+using DSharpPlus;
+using DSharpPlus.Entities;
+using DSharpPlus.EventArgs;
+using NLog;
+using OpenAI.Chat;
+using System.Timers;
+using Timer = System.Timers.Timer;
+
+namespace AssistantAI.Services.Events {
+    public record struct ChannelTimerInfo(int amount, Timer timer);
+    public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs> {
+        private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
+
+        private readonly IAiResponseService<AssistantChatMessage> _aiResponseService;
+        private readonly IAiResponseService<bool> _aiDecisionService;
+
+        private readonly string _systemPrompt;
+        private readonly string _replyDecisionPrompt;
+
+        private readonly List<ChatMessage> _chatMessages = new();
+        private readonly Dictionary<ulong, ChannelTimerInfo> _channelTypingTimer = new();
+
+        public AssistantAIGuild(IAiResponseService<AssistantChatMessage> aiResponseService, IAiResponseService<bool> aiDecisionService, DiscordClient client) {
+            _aiResponseService = aiResponseService;
+            _aiDecisionService = aiDecisionService;
+
+            _systemPrompt = $"""
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                To mention users, use the format <@USER_ID>.
+
+                - Think through each task step by step.
+                - Respond with short, clear, and concise replies.
+                - Do not include your name or ID in any of your responses.
+                - If the user mentions you, you should respond with "How can I assist you today?".
+                """;
+            _replyDecisionPrompt = $"""
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                To mention users, use the format "<@USER_ID>".
+
+                below is a list of think you SHOULD reply to:
+                - If the user asks a question.
+                - If the user asks for help.
+                - If the user mentions by using the format "<@{client.CurrentUser.Id}>" or "{client.CurrentUser.Username}".
+                - If the user replies to your message.
+
+                Anything else you should not reply to.
+                """;
+        }
+
+        public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
+            if(eventArgs.Author.IsBot
+                || eventArgs.Channel.IsPrivate
+                || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages))
+                return;
+
+            UserChatMessage userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
+            HandleChatMessage(userChatMessage);
+
+            bool shouldReply = await _aiDecisionService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_replyDecisionPrompt));
+            if(shouldReply) {
+                await AddTypingTimerForChannel(eventArgs.Channel);
+
+                AssistantChatMessage assistantChatMessage = await _aiResponseService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_systemPrompt));
+                await eventArgs.Message.RespondAsync(assistantChatMessage.Content[0].Text);
+                
+                RemoveTypingTimerForChannel(eventArgs.Channel);
+            }
+        }
+
+        private void RemoveTypingTimerForChannel(DiscordChannel channel) {
+            ChannelTimerInfo channelTimerInfo = _channelTypingTimer[channel.Id];
+            channelTimerInfo.amount--;
+
+            if(channelTimerInfo.amount == 0) {
+                channelTimerInfo.timer.Stop();
+                _channelTypingTimer.Remove(channel.Id);
+            }
+        }
+
+        private async Task AddTypingTimerForChannel(DiscordChannel channel) {
+            Timer channelTimer = new Timer(1000);
+            channelTimer.Elapsed += async (object? sender, ElapsedEventArgs e) => {
+                await channel.TriggerTypingAsync();
+            };
+
+            ChannelTimerInfo channelTimerInfo = _channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
+            channelTimerInfo.timer.Start();
+            channelTimerInfo.amount++;
+
+            _channelTypingTimer.SetOrAdd(channel.Id, channelTimerInfo);
+
+            await channel.TriggerTypingAsync();
+        }
+
+        private string HandleDiscordMessage(DiscordMessage discordMessage) {
+            return $"[User: {discordMessage.Author!.GlobalName} | ID: {discordMessage.Author.Id}] {discordMessage.Content}";
+        }
+
+        private void HandleChatMessage(ChatMessage chatMessage) {
+            _chatMessages.Add(chatMessage);
+
+            if(_chatMessages.Count > 50) {
+                _chatMessages.RemoveAt(0);
+            }
+        }
+    }
+}
