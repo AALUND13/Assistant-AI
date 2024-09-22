@@ -90,8 +90,17 @@ namespace AssistantAI.Events {
             await channel.TriggerTypingAsync();
         }
 
-        private string HandleDiscordMessage(DiscordMessage discordMessage) {
-            return $"[User: {discordMessage.Author!.GlobalName} | ID: {discordMessage.Author.Id}] {discordMessage.Content}";
+        private List<ChatMessageContentPart> HandleDiscordMessage(DiscordMessage discordMessage) {
+            List<Uri> imageURL = discordMessage.Attachments
+                .Where(attachment => attachment.MediaType!.StartsWith("image"))
+                .Select(attachment => new Uri(attachment.Url!)).ToList();
+
+            var chatMessageContentParts = new List<ChatMessageContentPart> {
+                ChatMessageContentPart.CreateTextMessageContentPart($"[User: {discordMessage.Author!.GlobalName} | ID: {discordMessage.Author.Id}] {discordMessage.Content}")
+            };
+
+            chatMessageContentParts.AddRange(imageURL.Select(url => ChatMessageContentPart.CreateImageMessageContentPart(url)));
+            return chatMessageContentParts;
         }
 
         private void HandleChatMessage(ChatMessage chatMessage) {
