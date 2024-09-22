@@ -3,39 +3,41 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using NLog;
 using OpenAI.Chat;
-using System;
 using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events {
     public record struct ChannelTimerInfo(int Amount, Timer Timer);
     public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
-        private readonly IAiResponseService<AssistantChatMessage> _aiResponseService;
-        private readonly IAiResponseService<bool> _aiDecisionService;
+        private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly string _systemPrompt;
-        private readonly string _replyDecisionPrompt;
+        private readonly IAiResponseService<AssistantChatMessage> aiResponseService;
+        private readonly IAiResponseService<bool> aiDecisionService;
 
-        private readonly Dictionary<ulong, ChannelTimerInfo> _channelTypingTimer = new();
+        private readonly string systemPrompt;
+        private readonly string replyDecisionPrompt;
 
-        public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; set; } = new();
+        private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = new();
+
+        public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = new();
 
         public AssistantAIGuild(IAiResponseService<AssistantChatMessage> aiResponseService, IAiResponseService<bool> aiDecisionService, DiscordClient client) {
-            _aiResponseService = aiResponseService;
-            _aiDecisionService = aiDecisionService;
+            this.aiResponseService = aiResponseService;
+            this.aiDecisionService = aiDecisionService;
 
-            _systemPrompt = $"""
+            systemPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format <@USER_ID>.
+                To mention users, use the format <@USERID>.
 
                 - Think through each task step by step.
                 - Respond with short, clear, and concise replies.
                 - Do not include your name or ID in any of your responses.
                 - If the user mentions you, you should respond with "How can I assist you today?".
                 """;
-            _replyDecisionPrompt = $"""
+            replyDecisionPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format "<@USER_ID>".
+                To mention users, use the format "<@USERID>".
 
                 below is a list of think you SHOULD reply to:
                 - If the user asks a question.
@@ -58,11 +60,11 @@ namespace AssistantAI.Events {
             var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
             HandleChatMessage(userChatMessage, eventArgs.Guild.Id);
 
-            bool shouldReply = await _aiDecisionService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(_replyDecisionPrompt));
+            bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(replyDecisionPrompt));
             if(shouldReply) {
                 await AddTypingTimerForChannel(eventArgs.Channel);
 
-                AssistantChatMessage assistantChatMessage = await _aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(_systemPrompt));
+                AssistantChatMessage assistantChatMessage = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(systemPrompt));
                 await eventArgs.Message.RespondAsync(assistantChatMessage.Content[0].Text);
 
                 RemoveTypingTimerForChannel(eventArgs.Channel);
@@ -70,12 +72,12 @@ namespace AssistantAI.Events {
         }
 
         private void RemoveTypingTimerForChannel(DiscordChannel channel) {
-            ChannelTimerInfo channelTimerInfo = _channelTypingTimer[channel.Id];
+            ChannelTimerInfo channelTimerInfo = channelTypingTimer[channel.Id];
             channelTimerInfo.Amount--;
 
             if(channelTimerInfo.Amount == 0) {
                 channelTimerInfo.Timer.Stop();
-                _channelTypingTimer.Remove(channel.Id);
+                channelTypingTimer.Remove(channel.Id);
             }
         }
 
@@ -85,11 +87,11 @@ namespace AssistantAI.Events {
                 await channel.TriggerTypingAsync();
             };
 
-            var channelTimerInfo = _channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
+            var channelTimerInfo = channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
             channelTimerInfo.Timer.Start();
             channelTimerInfo.Amount++;
 
-            _channelTypingTimer.SetOrAdd(channel.Id, channelTimerInfo);
+            channelTypingTimer.SetOrAdd(channel.Id, channelTimerInfo);
 
             await channel.TriggerTypingAsync();
         }
@@ -107,12 +109,14 @@ namespace AssistantAI.Events {
             return chatMessageContentParts;
         }
 
-        private void HandleChatMessage(ChatMessage chatMessage, ulong guildID) {
+        public void HandleChatMessage(ChatMessage chatMessage, ulong guildID) {
             ChatMessages[guildID].Add(chatMessage);
 
             if(ChatMessages[guildID].Count > 50) {
                 ChatMessages[guildID].RemoveAt(0);
             }
+
+            logger.Debug($"Chat message '{chatMessage.Content[0].Text}' added to guild '{guildID}'");
         }
     }
 }

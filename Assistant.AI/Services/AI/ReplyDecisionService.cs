@@ -7,8 +7,8 @@ namespace AssistantAI.Services.AI {
     public readonly record struct ReplyDecision(string Explanation, bool ShouldReply);
 
     public class ReplyDecisionService : IAiResponseService<bool> {
-        private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
-        private readonly static string _reasoningJsonSchema = """
+        private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly static string reasoningJsonSchema = """
             {
                 "type": "object",
                 "properties": {
@@ -20,31 +20,31 @@ namespace AssistantAI.Services.AI {
             }
             """;
 
-        private readonly IConfigService _configService;
-        private readonly ChatClient _openAIClient;
+        private readonly IConfigService configService;
+        private readonly ChatClient openAIClient;
 
         public ReplyDecisionService(IConfigService configService) {
-            _configService = configService;
-            _openAIClient = new ChatClient("gpt-4o-mini", _configService.Config.OpenAIKey);
+            this.configService = configService;
+            openAIClient = new ChatClient("gpt-4o-mini", configService.Config.OpenAIKey);
         }
 
 
         public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, UserChatMessage chatMessage, SystemChatMessage systemMessage) {
-            _logger.Debug($"Generating prompt for message: {chatMessage.Content[0].Text}");
+            logger.Debug($"Generating prompt for message: {chatMessage.Content[0].Text}");
 
             var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
             var chatCompletionOptions = new ChatCompletionOptions() {
                 ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
                     name: "reasoning",
-                    jsonSchema: BinaryData.FromString(_reasoningJsonSchema),
+                    jsonSchema: BinaryData.FromString(reasoningJsonSchema),
                     strictSchemaEnabled: true
                 )
             };
 
-            var chatCompletion = await _openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
+            var chatCompletion = await openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
             var shouldReply = HandleRespone(chatCompletion);
-            _logger.Info($"Prompt generated. Should reply: {shouldReply}");
+            logger.Info($"Prompt generated. Should reply: {shouldReply}");
 
             return shouldReply;
         }

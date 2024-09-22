@@ -23,15 +23,15 @@ namespace AssistantAI.Services {
     }
 
     public static class ServiceManager {
-        private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
-        private readonly static ServiceCollection _services = new();
+        private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly static ServiceCollection services = new();
 
         public static IServiceProvider? ServiceProvider { get; private set; }
 
         public static void InitializeServices() {
             ConfigureServices();
-            ServiceProvider = _services.BuildServiceProvider();
-            _logger.Info("Services initialized.");
+            ServiceProvider = services.BuildServiceProvider();
+            logger.Info("Services initialized.");
 
             IConfigService configService = GetService<IConfigService>();
             configService.LoadConfig();
@@ -55,30 +55,30 @@ namespace AssistantAI.Services {
         private static void InializeDiscordClient() {
             DiscordClient client = GetService<DiscordClient>();
             client.ConnectAsync().Wait();
-            _logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
+            logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
         }
 
         private static void ConfigureServices() {
-            _services.AddLogging(loggerBuilder => {
+            services.AddLogging(loggerBuilder => {
                 loggerBuilder.ClearProviders();
                 loggerBuilder.AddNLog();
             });
 
-            _services.AddSingleton<IConfigService, ConfigService>();
-            _services.AddSingleton<IDatabaseService<Data>, JsonDatabaseService<Data>>();
+            services.AddSingleton<IConfigService, ConfigService>();
+            services.AddSingleton<IDatabaseService<Data>, JsonDatabaseService<Data>>();
 
-            ServiceProvider = _services.BuildServiceProvider(); // Create a temporary service provider to get the config service
+            ServiceProvider = services.BuildServiceProvider(); // Create a temporary service provider to get the config service
             IConfigService configService = ServiceProvider.GetRequiredService<IConfigService>();
             configService.LoadConfig();
-            _logger.Info("Temporary configuration service loaded.");
+            logger.Info("Temporary configuration service loaded.");
 
 
 
-            _logger.Debug("Initializing Discord client services...");
-            _services.AddDiscordClient(configService.Config.Token, DiscordIntents.All);
-            _logger.Info("Discord client initialized.");
+            logger.Debug("Initializing Discord client services...");
+            services.AddDiscordClient(configService.Config.Token, DiscordIntents.All);
+            logger.Info("Discord client initialized.");
 
-            _services.AddCommandsExtension(
+            services.AddCommandsExtension(
                 extension => {
 
                     extension.AddCommands(Assembly.GetExecutingAssembly());
@@ -95,14 +95,14 @@ namespace AssistantAI.Services {
                     RegisterDefaultCommandProcessors = true,
                 }
             );
-            _logger.Info("Commands initialized.");
+            logger.Info("Commands initialized.");
 
-            _services.AddSingleton<IAiResponseService<AssistantChatMessage>, ReasoningAiService>();
-            _services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
+            services.AddSingleton<IAiResponseService<AssistantChatMessage>, ReasoningAiService>();
+            services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
 
-            _logger.Debug("Initializing event handlers...");
+            logger.Debug("Initializing event handlers...");
             ConfigureEventHandlers();
-            _logger.Info("Event handlers initialized.");
+            logger.Info("Event handlers initialized.");
         }
 
         private static void ConfigureEventHandlers() {
@@ -110,9 +110,9 @@ namespace AssistantAI.Services {
                 .Where(type => typeof(IEventHandler).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
                 .ToList();
 
-            _logger.Debug($"Found {handlerTypes.Count} event handlers.");
+            logger.Debug($"Found {handlerTypes.Count} event handlers.");
 
-            _services.ConfigureEventHandlers(eventHandlingBuilder => {
+            services.ConfigureEventHandlers(eventHandlingBuilder => {
                 foreach(var handlerType in handlerTypes) {
                     // Use reflection to dynamically call the generic AddEventHandlers<T> method
                     var method = eventHandlingBuilder.GetType().GetMethod("AddEventHandlers")!.MakeGenericMethod(handlerType);
@@ -120,7 +120,7 @@ namespace AssistantAI.Services {
                     // Invoke the method dynamically
                     method.Invoke(eventHandlingBuilder, [ServiceLifetime.Singleton]);
 
-                    _logger.Debug($"Added event handler: {handlerType.Name}");
+                    logger.Debug($"Added event handler: {handlerType.Name}");
                 }
             });
         }
