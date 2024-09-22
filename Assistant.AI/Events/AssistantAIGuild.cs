@@ -4,19 +4,21 @@ using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using OpenAI.Chat;
+using System;
 using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events {
     public record struct ChannelTimerInfo(int Amount, Timer Timer);
-    public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs> {
+    public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
         private readonly IAiResponseService<AssistantChatMessage> _aiResponseService;
         private readonly IAiResponseService<bool> _aiDecisionService;
 
         private readonly string _systemPrompt;
         private readonly string _replyDecisionPrompt;
 
-        private readonly List<ChatMessage> _chatMessages = new();
         private readonly Dictionary<ulong, ChannelTimerInfo> _channelTypingTimer = new();
+
+        public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; set; } = new();
 
         public AssistantAIGuild(IAiResponseService<AssistantChatMessage> aiResponseService, IAiResponseService<bool> aiDecisionService, DiscordClient client) {
             _aiResponseService = aiResponseService;
@@ -51,14 +53,16 @@ namespace AssistantAI.Events {
                 || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages))
                 return;
 
-            var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
-            HandleChatMessage(userChatMessage);
+            ChatMessages.TryAdd(eventArgs.Guild.Id, new List<ChatMessage>());
 
-            bool shouldReply = await _aiDecisionService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_replyDecisionPrompt));
+            var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
+            HandleChatMessage(userChatMessage, eventArgs.Guild.Id);
+
+            bool shouldReply = await _aiDecisionService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(_replyDecisionPrompt));
             if(shouldReply) {
                 await AddTypingTimerForChannel(eventArgs.Channel);
 
-                AssistantChatMessage assistantChatMessage = await _aiResponseService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_systemPrompt));
+                AssistantChatMessage assistantChatMessage = await _aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], userChatMessage, ChatMessage.CreateSystemMessage(_systemPrompt));
                 await eventArgs.Message.RespondAsync(assistantChatMessage.Content[0].Text);
 
                 RemoveTypingTimerForChannel(eventArgs.Channel);
@@ -103,11 +107,11 @@ namespace AssistantAI.Events {
             return chatMessageContentParts;
         }
 
-        private void HandleChatMessage(ChatMessage chatMessage) {
-            _chatMessages.Add(chatMessage);
+        private void HandleChatMessage(ChatMessage chatMessage, ulong guildID) {
+            ChatMessages[guildID].Add(chatMessage);
 
-            if(_chatMessages.Count > 50) {
-                _chatMessages.RemoveAt(0);
+            if(ChatMessages[guildID].Count > 50) {
+                ChatMessages[guildID].RemoveAt(0);
             }
         }
     }
