@@ -5,10 +5,9 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using NLog;
 using OpenAI.Chat;
-using System.Timers;
 using Timer = System.Timers.Timer;
 
-namespace AssistantAI.Services.Events {
+namespace AssistantAI.Events {
     public record struct ChannelTimerInfo(int amount, Timer timer);
     public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs> {
         private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
@@ -64,7 +63,7 @@ namespace AssistantAI.Services.Events {
 
                 AssistantChatMessage assistantChatMessage = await _aiResponseService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_systemPrompt));
                 await eventArgs.Message.RespondAsync(assistantChatMessage.Content[0].Text);
-                
+
                 RemoveTypingTimerForChannel(eventArgs.Channel);
             }
         }
@@ -81,7 +80,7 @@ namespace AssistantAI.Services.Events {
 
         private async Task AddTypingTimerForChannel(DiscordChannel channel) {
             Timer channelTimer = new Timer(1000);
-            channelTimer.Elapsed += async (object? sender, ElapsedEventArgs e) => {
+            channelTimer.Elapsed += async (sender, e) => {
                 await channel.TriggerTypingAsync();
             };
 
