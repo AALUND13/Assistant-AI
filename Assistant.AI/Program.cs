@@ -4,7 +4,7 @@ using NLog;
 
 namespace AssistantAI {
     class Program {
-        static async Task Main(string[] args) {
+        static async Task Main() {
             LogManager.Configuration = new NLogConfig().Configuration;
             Logger logger = LogManager.GetCurrentClassLogger();
 

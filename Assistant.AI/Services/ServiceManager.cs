@@ -5,7 +5,6 @@ using DSharpPlus.Commands;
 using DSharpPlus.Commands.Processors.SlashCommands;
 using DSharpPlus.Commands.Processors.TextCommands;
 using DSharpPlus.Commands.Processors.TextCommands.Parsing;
-using DSharpPlus.EventArgs;
 using DSharpPlus.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,19 +13,18 @@ using NLog.Extensions.Logging;
 using OpenAI.Chat;
 using System.Reflection;
 
-namespace AssistantAI.Services
-{
+namespace AssistantAI.Services {
     public class Data {
         public class UserData {
-            public Dictionary<string, long> CommandCooldowns { get; set; } = new Dictionary<string, long>();
+            public Dictionary<string, long> CommandCooldowns { get; set; } = new();
         }
 
-        public Dictionary<ulong, UserData> Users { get; set; } = new Dictionary<ulong, UserData>();
+        public Dictionary<ulong, UserData> Users { get; set; } = new();
     }
 
     public static class ServiceManager {
         private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
-        private readonly static ServiceCollection _services = new ServiceCollection();
+        private readonly static ServiceCollection _services = new();
 
         public static IServiceProvider? ServiceProvider { get; private set; }
 

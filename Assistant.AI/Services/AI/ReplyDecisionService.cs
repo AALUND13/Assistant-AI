@@ -20,8 +20,8 @@ namespace AssistantAI.Services.AI {
             }
             """;
 
-        IConfigService _configService;
-        ChatClient _openAIClient;
+        private readonly IConfigService _configService;
+        private readonly ChatClient _openAIClient;
 
         public ReplyDecisionService(IConfigService configService) {
             _configService = configService;

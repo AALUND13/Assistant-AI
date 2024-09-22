@@ -3,15 +3,12 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
-using NLog;
 using OpenAI.Chat;
 using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events {
-    public record struct ChannelTimerInfo(int amount, Timer timer);
+    public record struct ChannelTimerInfo(int Amount, Timer Timer);
     public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs> {
-        private readonly static Logger _logger = LogManager.GetCurrentClassLogger();
-
         private readonly IAiResponseService<AssistantChatMessage> _aiResponseService;
         private readonly IAiResponseService<bool> _aiDecisionService;
 
@@ -54,7 +51,7 @@ namespace AssistantAI.Events {
                 || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages))
                 return;
 
-            UserChatMessage userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
+            var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
             HandleChatMessage(userChatMessage);
 
             bool shouldReply = await _aiDecisionService.PromptAsync(_chatMessages, userChatMessage, ChatMessage.CreateSystemMessage(_replyDecisionPrompt));
@@ -70,23 +67,23 @@ namespace AssistantAI.Events {
 
         private void RemoveTypingTimerForChannel(DiscordChannel channel) {
             ChannelTimerInfo channelTimerInfo = _channelTypingTimer[channel.Id];
-            channelTimerInfo.amount--;
+            channelTimerInfo.Amount--;
 
-            if(channelTimerInfo.amount == 0) {
-                channelTimerInfo.timer.Stop();
+            if(channelTimerInfo.Amount == 0) {
+                channelTimerInfo.Timer.Stop();
                 _channelTypingTimer.Remove(channel.Id);
             }
         }
 
         private async Task AddTypingTimerForChannel(DiscordChannel channel) {
-            Timer channelTimer = new Timer(1000);
+            var channelTimer = new Timer(1000);
             channelTimer.Elapsed += async (sender, e) => {
                 await channel.TriggerTypingAsync();
             };
 
-            ChannelTimerInfo channelTimerInfo = _channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
-            channelTimerInfo.timer.Start();
-            channelTimerInfo.amount++;
+            var channelTimerInfo = _channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
+            channelTimerInfo.Timer.Start();
+            channelTimerInfo.Amount++;
 
             _channelTypingTimer.SetOrAdd(channel.Id, channelTimerInfo);
 

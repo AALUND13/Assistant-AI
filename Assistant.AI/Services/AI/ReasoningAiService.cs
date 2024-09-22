@@ -31,8 +31,8 @@ namespace AssistantAI.Services {
             }
             """;
 
-        IConfigService ConfigService;
-        ChatClient OpenAIClient;
+        private readonly IConfigService ConfigService;
+        private readonly ChatClient OpenAIClient;
 
         public ReasoningAiService(IConfigService configService) {
             ConfigService = configService;
