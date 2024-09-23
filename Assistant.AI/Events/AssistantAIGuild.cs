@@ -77,6 +77,8 @@ namespace AssistantAI.Events {
 
             if(channelTimerInfo.Amount == 0) {
                 channelTimerInfo.Timer.Stop();
+                channelTimerInfo.Timer.Dispose();
+
                 channelTypingTimer.Remove(channel.Id);
             }
         }

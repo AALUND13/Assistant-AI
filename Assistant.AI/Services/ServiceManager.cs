@@ -1,10 +1,15 @@
-﻿using AssistantAI.Services.AI;
+﻿using AssistantAI.ContextChecks;
+using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
+using DSharpPlus.Commands.EventArgs;
+using DSharpPlus.Commands.Exceptions;
 using DSharpPlus.Commands.Processors.SlashCommands;
 using DSharpPlus.Commands.Processors.TextCommands;
 using DSharpPlus.Commands.Processors.TextCommands.Parsing;
+using DSharpPlus.Entities;
+using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,6 +17,7 @@ using NLog;
 using NLog.Extensions.Logging;
 using OpenAI.Chat;
 using System.Reflection;
+using System.Text;
 
 namespace AssistantAI.Services {
     public class Data {
@@ -85,14 +91,18 @@ namespace AssistantAI.Services {
 
                     SlashCommandProcessor slashCommandProcessor = new(new());
                     TextCommandProcessor textCommandProcessor = new(new() {
-                        PrefixResolver = new DefaultPrefixResolver(true, "a!").ResolvePrefixAsync
+                        PrefixResolver = new DefaultPrefixResolver(false, "a!").ResolvePrefixAsync
                     });
+
+                    extension.CommandErrored += CommandErrorHandler;
 
                     extension.AddProcessors(slashCommandProcessor, textCommandProcessor);
 
+                    extension.AddCheck<CooldownCheck>();
                 },
                 new CommandsConfiguration() {
-                    RegisterDefaultCommandProcessors = true,
+                    RegisterDefaultCommandProcessors = false,
+                    UseDefaultCommandErrorHandler = false
                 }
             );
             logger.Info("Commands initialized.");
@@ -124,5 +134,74 @@ namespace AssistantAI.Services {
                 }
             });
         }
+
+        /// <summary>
+        /// Modified version of the default CommandErrorHandler to handle exceptions in a more user-friendly way.
+        /// Original source: <see href="https://github.com/DSharpPlus/DSharpPlus/blob/a04d686c9a2841401d210844265c85648381615a/DSharpPlus.Commands/CommandsExtension.cs#L490"/>
+        /// </summary>
+        private static async Task CommandErrorHandler(CommandsExtension extension, CommandErroredEventArgs eventArgs) {
+            StringBuilder stringBuilder = new();
+            DiscordMessageBuilder messageBuilder = new();
+
+            // Error message
+            stringBuilder.Append(eventArgs.Exception switch {
+                CommandNotFoundException commandNotFoundException
+                    => $"Command {Formatter.InlineCode(Formatter.Sanitize(commandNotFoundException.CommandName))} was not found.",
+                ArgumentParseException argumentParseException
+                    => $"Failed to parse argument {Formatter.InlineCode(Formatter.Sanitize(argumentParseException.Parameter.Name))}.",
+                ChecksFailedException checksFailedException when checksFailedException.Errors.Count == 1
+                    => checksFailedException.Errors[0].ErrorMessage,
+                ChecksFailedException checksFailedException
+                    => $"The following context checks failed: {Formatter.InlineCode(Formatter.Sanitize(string.Join("\n\n", checksFailedException.Errors.Select(x => x.ErrorMessage))))}.",
+                ParameterChecksFailedException checksFailedException when checksFailedException.Errors.Count == 1
+                    => $"The following error occurred: {Formatter.InlineCode(Formatter.Sanitize(checksFailedException.Errors[0].ErrorMessage))}",
+                ParameterChecksFailedException checksFailedException
+                    => $"The following context checks failed: {Formatter.InlineCode(Formatter.Sanitize(string.Join("\n\n", checksFailedException.Errors.Select(x => x.ErrorMessage))))}.",
+                DiscordException discordException when discordException.Response is not null
+                    && (int)discordException.Response.StatusCode >= 500
+                    && (int)discordException.Response.StatusCode < 600
+                    => $"Discord API error {discordException.Response.StatusCode} occurred: {discordException.JsonMessage ?? "No further information was provided."}",
+                DiscordException discordException when discordException.Response is not null
+                => $"Discord API error {discordException.Response.StatusCode} occurred: {discordException.JsonMessage ?? discordException.Message}",
+                _ => $"An unexpected error occurred: {eventArgs.Exception.Message}"
+            });
+
+            // Stack trace
+            if(!string.IsNullOrWhiteSpace(eventArgs.Exception.StackTrace)) {
+                // If the stack trace can fit inside a codeblock
+                if(8 + eventArgs.Exception.StackTrace.Length + stringBuilder.Length <= 2000) {
+                    stringBuilder.Append($"```\n{eventArgs.Exception.StackTrace}\n```");
+                    messageBuilder.WithContent(stringBuilder.ToString());
+                }
+                // If the exception message exceeds the message character limit, cram it all into an attatched file with a simple message in the content.
+                else if(stringBuilder.Length >= 2000) {
+                    messageBuilder.WithContent("Exception Message exceeds character limit, see attached file.");
+                    string formattedFile = $"{stringBuilder}{Environment.NewLine}{Environment.NewLine}Stack Trace:{Environment.NewLine}{eventArgs.Exception.StackTrace}";
+                    messageBuilder.AddFile("MessageAndStackTrace.txt", new MemoryStream(Encoding.UTF8.GetBytes(formattedFile)), AddFileOptions.CloseStream);
+                }
+                // Otherwise, display the exception message in the content and the trace in an attached file
+                else {
+                    messageBuilder.WithContent(stringBuilder.ToString());
+                    messageBuilder.AddFile("StackTrace.txt", new MemoryStream(Encoding.UTF8.GetBytes(eventArgs.Exception.StackTrace)), AddFileOptions.CloseStream);
+                }
+            }
+            // If no stack trace, and the message is still too long, attatch a file with the message and use a simple message in the content.
+            else if(stringBuilder.Length >= 2000) {
+                messageBuilder.WithContent("Exception Message exceeds character limit, see attached file.");
+                messageBuilder.AddFile("Message.txt", new MemoryStream(Encoding.UTF8.GetBytes(stringBuilder.ToString())), AddFileOptions.CloseStream);
+            }
+            // Otherwise, if no stack trace and the Exception message will fit, send the message as content
+            else {
+                messageBuilder.WithContent(stringBuilder.ToString());
+            }
+
+
+            if(eventArgs.Context is SlashCommandContext { Interaction.ResponseState: not DiscordInteractionResponseState.Unacknowledged }) {
+                await eventArgs.Context.FollowupAsync(messageBuilder);
+            } else {
+                await eventArgs.Context.RespondAsync(messageBuilder);
+            }
+        }
+
     }
 }
