@@ -29,7 +29,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         this.aiDecisionService = aiDecisionService;
 
         systemPrompt = $"""
-            You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
                 To mention users, use the format <@USERID>.
 
                 - Think through each task step by step.
@@ -38,7 +38,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 - If the user mentions you, you should respond with "How can I assist you today?".
                 """;
         replyDecisionPrompt = $"""
-            You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
                 To mention users, use the format "<@USERID>".
 
                 below is a list of think you SHOULD reply to:
