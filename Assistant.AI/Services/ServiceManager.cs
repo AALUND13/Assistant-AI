@@ -20,13 +20,8 @@ using System.Reflection;
 using System.Text;
 
 namespace AssistantAI.Services {
-    public class Data {
-        public class UserData {
-            public Dictionary<string, long> CommandCooldowns { get; set; } = new();
-        }
-
-        public Dictionary<ulong, UserData> Users { get; set; } = new();
-    }
+    public record struct UserData(Dictionary<string, long> CommandCooldowns);
+    public record struct Data(Dictionary<ulong, UserData> Users);
 
     public static class ServiceManager {
         private readonly static Logger logger = LogManager.GetCurrentClassLogger();
@@ -141,7 +136,9 @@ namespace AssistantAI.Services {
         /// </summary>
         private static async Task CommandErrorHandler(CommandsExtension extension, CommandErroredEventArgs eventArgs) {
             StringBuilder stringBuilder = new();
-            DiscordMessageBuilder messageBuilder = new();
+            DiscordInteractionResponseBuilder messageBuilder = new() {
+                IsEphemeral = true
+            };
 
             // Error message
             stringBuilder.Append(eventArgs.Exception switch {
@@ -194,7 +191,7 @@ namespace AssistantAI.Services {
             else {
                 messageBuilder.WithContent(stringBuilder.ToString());
             }
-
+            
 
             if(eventArgs.Context is SlashCommandContext { Interaction.ResponseState: not DiscordInteractionResponseState.Unacknowledged }) {
                 await eventArgs.Context.FollowupAsync(messageBuilder);
@@ -202,6 +199,5 @@ namespace AssistantAI.Services {
                 await eventArgs.Context.RespondAsync(messageBuilder);
             }
         }
-
     }
 }

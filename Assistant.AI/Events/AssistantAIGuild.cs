@@ -18,9 +18,9 @@ namespace AssistantAI.Events {
         private readonly string systemPrompt;
         private readonly string replyDecisionPrompt;
 
-        private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = new();
+        private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
-        public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = new();
+        public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = [];
 
         public AssistantAIGuild(IAiResponseService<AssistantChatMessage> aiResponseService, IAiResponseService<bool> aiDecisionService, DiscordClient client) {
             this.aiResponseService = aiResponseService;

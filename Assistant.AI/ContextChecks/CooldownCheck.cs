@@ -20,7 +20,7 @@ namespace AssistantAI.ContextChecks {
         private readonly static IDatabaseService<Data> DatabaseService = ServiceManager.GetService<IDatabaseService<Data>>();
 
         public ValueTask<string?> ExecuteCheckAsync(CooldownAttribute attribute, CommandContext context) {
-            Data.UserData userData = DatabaseService.Data.Users.GetOrDefault(context.User.Id, new Data.UserData());
+            UserData userData = DatabaseService.Data.Users.GetOrDefault(context.User.Id, new UserData());
             double cooldown = userData.CommandCooldowns.GetOrDefault(context.Command.FullName, 0);
             double timeLeft = cooldown - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
