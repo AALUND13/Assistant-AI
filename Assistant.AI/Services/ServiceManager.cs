@@ -25,9 +25,10 @@ namespace AssistantAI.Services {
 
     public static class ServiceManager {
         private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-        private readonly static ServiceCollection services = new();
 
+        private readonly static IServiceCollection services = new ServiceCollection();
         public static IServiceProvider? ServiceProvider { get; private set; }
+
 
         public static void InitializeServices() {
             ConfigureServices();
@@ -43,6 +44,12 @@ namespace AssistantAI.Services {
             InializeDiscordClient();
         }
 
+        private static void InializeDiscordClient() {
+            DiscordClient client = GetService<DiscordClient>();
+            client.ConnectAsync().Wait();
+            logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
+        }
+
         public static T GetService<T>() where T : notnull {
             if(ServiceProvider == null) {
                 throw new Exception("Service Manager has not been initialized.");
@@ -51,13 +58,6 @@ namespace AssistantAI.Services {
             return ServiceProvider.GetRequiredService<T>();
         }
 
-
-
-        private static void InializeDiscordClient() {
-            DiscordClient client = GetService<DiscordClient>();
-            client.ConnectAsync().Wait();
-            logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
-        }
 
         private static void ConfigureServices() {
             services.AddLogging(loggerBuilder => {

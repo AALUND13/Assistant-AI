@@ -1,9 +1,9 @@
 # Ingore build files
-Assistant.AI/bin/
-Assistant.AI/obj/
+*/bin/
+*/obj/
 
 # Ignore config file
-Assistant.AI/config.json
+*/config.json
 
 # Infore .vs folder
 .vs/
