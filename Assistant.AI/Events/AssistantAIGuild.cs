@@ -119,7 +119,5 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         if(ChatMessages[guildID].Count > 50) {
             ChatMessages[guildID].RemoveAt(0);
         }
-
-        logger.Debug($"Chat message '{chatMessage.Content[0].Text}' added to guild '{guildID}'");
     }
 }

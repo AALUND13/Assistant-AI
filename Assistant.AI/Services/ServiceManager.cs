@@ -11,6 +11,7 @@ using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
+using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -108,9 +109,11 @@ public static class ServiceManager {
         services.AddSingleton<IAiResponseService<AssistantChatMessage>, ReasoningAiService>();
         services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
 
+
         logger.Debug("Initializing event handlers...");
         ConfigureEventHandlers();
         logger.Info("Event handlers initialized.");
+
     }
 
     private static void ConfigureEventHandlers() {
@@ -118,7 +121,7 @@ public static class ServiceManager {
             .Where(type => typeof(IEventHandler).IsAssignableFrom(type) && !type.IsInterface && !type.IsAbstract)
             .ToList();
 
-        logger.Debug($"Found {handlerTypes.Count} event handlers.");
+        logger.Debug("Found {Count} event handlers.", handlerTypes.Count);
 
         services.ConfigureEventHandlers(eventHandlingBuilder => {
             foreach(var handlerType in handlerTypes) {
@@ -128,7 +131,7 @@ public static class ServiceManager {
                 // Invoke the method dynamically
                 method.Invoke(eventHandlingBuilder, [ServiceLifetime.Singleton]);
 
-                logger.Debug($"Added event handler: {handlerType.Name}");
+                logger.Debug("Added event handler: {TypeName}", handlerType.Name);
             }
         });
     }
@@ -201,5 +204,7 @@ public static class ServiceManager {
         } else {
             await eventArgs.Context.RespondAsync(messageBuilder);
         }
+
+        logger.Error(eventArgs.Exception, "An error occurred while executing a command.");
     }
 }

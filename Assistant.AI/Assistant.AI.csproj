@@ -10,14 +10,14 @@
   </PropertyGroup>
 
 	<ItemGroup>
-		<None Include="../.gitignore"/>
-		<None Include="../README.md"/>
+		<None Include="../.gitignore" />
+		<None Include="../README.md" />
 	</ItemGroup>
 	
   <ItemGroup>
     <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02361" />
     <PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02361" />
-    <PackageReference Include="DSharpPlus.VoiceNext" Version="4.5.0" />
+    <PackageReference Include="DSharpPlus.VoiceNext" Version="5.0.0-nightly-02361" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NLog" Version="5.3.4" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.13" />

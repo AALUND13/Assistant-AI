@@ -17,14 +17,11 @@ public class JsonDatabaseService<TData> : IDatabaseService<TData>{
             try {
                 Data = JsonConvert.DeserializeObject<TData>(File.ReadAllText(path))!;
             } catch(Exception ex) {
-                logger.Warn($"Failed to load database from {path}: {ex.Message}");
-                logger.Debug("Initializing database with default data.");
+                logger.Warn("Failed to load database from {Path}: {ErrorMessage}", path, ex.Message);
 
                 Data = defaultData;
             }
         } else {
-            logger.Debug("Initializing database with default data.");
-
             Data = defaultData;
             SaveDatabase(); // Write default data to file if no file exists
         }
@@ -32,6 +29,8 @@ public class JsonDatabaseService<TData> : IDatabaseService<TData>{
         if(Data == null) {
             throw new Exception("Failed to load or initialize database.");
         }
+
+        logger.Info("Database loaded successfully.");
     }
 
     public void SaveDatabase() {

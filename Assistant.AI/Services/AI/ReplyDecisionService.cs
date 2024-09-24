@@ -5,7 +5,7 @@ using OpenAI.Chat;
 
 namespace AssistantAI.Services.AI;
 
-public readonly record struct ReplyDecision(string Explanation, bool ShouldReply);
+public readonly record struct Decision(string Explanation, bool IsApproved);
 
 public class ReplyDecisionService : IAiResponseService<bool> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
@@ -14,9 +14,9 @@ public class ReplyDecisionService : IAiResponseService<bool> {
             "type": "object",
             "properties": {
                 "explanation": { "type": "string" },
-                "shouldReply": { "type": "boolean" }
+                "decision": { "type": "boolean" }
             },
-            "required": ["shouldReply", "explanation"],
+            "required": ["decision", "explanation"],
             "additionalProperties": false
         }
         """;
@@ -29,8 +29,6 @@ public class ReplyDecisionService : IAiResponseService<bool> {
 
 
     public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, UserChatMessage chatMessage, SystemChatMessage systemMessage) {
-        logger.Debug($"Generating prompt for message: {chatMessage.Content[0].Text}");
-
         var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {
@@ -42,17 +40,17 @@ public class ReplyDecisionService : IAiResponseService<bool> {
         };
 
         var chatCompletion = await openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
-        var shouldReply = HandleRespone(chatCompletion);
-        logger.Info($"Prompt generated. Should reply: {shouldReply}");
+        var decision = HandleRespone(chatCompletion);
+        logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", chatMessage.Content[0].Text, decision, chatCompletion.ToString());
 
-        return shouldReply;
+        return decision;
     }
 
     private bool HandleRespone(ChatCompletion chatCompletion) {
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                ReplyDecision reasoning = JsonConvert.DeserializeObject<ReplyDecision>(chatCompletion.ToString());
-                return reasoning.ShouldReply;
+                Decision reasoning = JsonConvert.DeserializeObject<Decision>(chatCompletion.ToString());
+                return reasoning.IsApproved;
             default:
                 return false;
         }

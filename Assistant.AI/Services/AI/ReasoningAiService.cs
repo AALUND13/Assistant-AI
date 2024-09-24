@@ -42,8 +42,6 @@ public class ReasoningAiService : IAiResponseService<AssistantChatMessage> {
 
 
     public async Task<AssistantChatMessage> PromptAsync(List<ChatMessage> additionalMessages, UserChatMessage chatMessage, SystemChatMessage systemMessage) {
-        logger.Debug($"Generating prompt for message: {chatMessage.Content[0].Text}");
-
         var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {
@@ -57,7 +55,7 @@ public class ReasoningAiService : IAiResponseService<AssistantChatMessage> {
         var chatCompletion = await openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
         var assistantChatMessage = HandleRespone(chatCompletion);
 
-        logger.Info($"Generated prompt for message: {chatMessage.Content[0].Text}, with response: {assistantChatMessage.Content[0].Text}");
+        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", chatMessage.Content[0].Text, assistantChatMessage.Content[0].Text);
 
         return assistantChatMessage;
     }

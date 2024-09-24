@@ -12,7 +12,6 @@ public class ConfigService : IConfigService {
     public void LoadConfig() {
         string execPath = AppDomain.CurrentDomain.BaseDirectory;
         string configPath = Path.Combine(execPath, "config.json");
-        logger.Debug($"Loading configuration from {configPath}");
 
         if(!File.Exists(configPath)) {
             throw new FileNotFoundException("Configuration file not found.", configPath);

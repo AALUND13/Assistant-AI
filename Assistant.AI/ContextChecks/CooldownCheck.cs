@@ -27,8 +27,6 @@ public class CooldownCheck : IContextCheck<CooldownAttribute> {
 
 
         if(timeLeft > 0) {
-            logger.Debug($"'{context.User.GlobalName}' is on cooldown for command '{context.Command.FullName}' for {timeLeft} seconds.");
-
             return ValueTask.FromResult<string?>(string.Format(ErrorMessage, $"<t:{(uint)cooldown}:R>"));
         } else {
             userData.CommandCooldowns[context.Command.FullName] = DateTimeOffset.UtcNow.Add(attribute.Cooldown).ToUnixTimeSeconds();
