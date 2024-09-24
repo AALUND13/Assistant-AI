@@ -2,38 +2,38 @@
 using NLog.Config;
 using NLog.Targets;
 
-namespace AssistantAI.Utilities {
-    public class NLogConfig : ISetupLoadConfigurationBuilder {
-        public LogFactory LogFactory { get; set; }
-        public LoggingConfiguration Configuration { get; set; }
+namespace AssistantAI.Utilities;
 
-        public NLogConfig() {
-            // Initialize your NLog LogFactory and LoggingConfiguration here
-            LogFactory = new LogFactory();
-            Configuration = new LoggingConfiguration();
+public class NLogConfig : ISetupLoadConfigurationBuilder {
+    public LogFactory LogFactory { get; set; }
+    public LoggingConfiguration Configuration { get; set; }
 
-            // Configure NLog targets and rules as needed
-            ConfigureLogging();
-        }
+    public NLogConfig() {
+        // Initialize your NLog LogFactory and LoggingConfiguration here
+        LogFactory = new LogFactory();
+        Configuration = new LoggingConfiguration();
 
-        private void ConfigureLogging() {
-            // Example: Adding a file target
-            var fileTarget = new FileTarget("fileTarget") {
-                FileName = "${basedir}/logs/${shortdate}.log",
-                // Layout includes the stack trace when an exception is logged
-                Layout = "${longdate} ${level} ${message} ${exception:format=ToString}"
-            };
+        // Configure NLog targets and rules as needed
+        ConfigureLogging();
+    }
 
-            Configuration.AddTarget(fileTarget);
-            Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, fileTarget));
+    private void ConfigureLogging() {
+        // Example: Adding a file target
+        var fileTarget = new FileTarget("fileTarget") {
+            FileName = "${basedir}/logs/${shortdate}.log",
+            // Layout includes the stack trace when an exception is logged
+            Layout = "${longdate} ${level} ${message} ${exception:format=ToString}"
+        };
 
-            var consoleTarget = new ColoredConsoleTarget("consoleTarget") {
-                // Layout includes the stack trace when an exception is logged
-                Layout = "[${longdate}] [${level}] ${message} ${exception:format=ToString}"
-            };
+        Configuration.AddTarget(fileTarget);
+        Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, fileTarget));
 
-            Configuration.AddTarget(consoleTarget);
-            Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, consoleTarget));
-        }
+        var consoleTarget = new ColoredConsoleTarget("consoleTarget") {
+            // Layout includes the stack trace when an exception is logged
+            Layout = "[${longdate}] [${level}] ${message} ${exception:format=ToString}"
+        };
+
+        Configuration.AddTarget(consoleTarget);
+        Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Debug, consoleTarget));
     }
 }

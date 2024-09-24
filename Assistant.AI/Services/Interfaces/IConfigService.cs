@@ -1,11 +1,11 @@
-﻿namespace AssistantAI.Services.Interfaces {
-    public struct ConfigStruct {
-        public string Token;
-        public string OpenAIKey;
-    }
+﻿namespace AssistantAI.Services.Interfaces;
 
-    public interface IConfigService {
-        ConfigStruct Config { get; }
-        void LoadConfig();
-    }
+public struct ConfigStruct {
+    public string Token;
+    public string OpenAIKey;
+}
+
+public interface IConfigService {
+    ConfigStruct Config { get; }
+    void LoadConfig();
 }
