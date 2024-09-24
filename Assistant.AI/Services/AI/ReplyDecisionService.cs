@@ -28,7 +28,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
     }
 
 
-    public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, UserChatMessage chatMessage, SystemChatMessage systemMessage) {
+    public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, ChatMessage chatMessage, SystemChatMessage systemMessage) {
         var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {

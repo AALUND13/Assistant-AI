@@ -4,6 +4,7 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using NLog;
+using System.ComponentModel;
 
 namespace AssistantAI.ContextChecks;
 

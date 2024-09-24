@@ -41,7 +41,7 @@ public class ReasoningAiService : IAiResponseService<AssistantChatMessage> {
     }
 
 
-    public async Task<AssistantChatMessage> PromptAsync(List<ChatMessage> additionalMessages, UserChatMessage chatMessage, SystemChatMessage systemMessage) {
+    public async Task<AssistantChatMessage> PromptAsync(List<ChatMessage> additionalMessages, ChatMessage chatMessage, SystemChatMessage systemMessage) {
         var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {
