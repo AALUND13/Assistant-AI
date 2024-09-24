@@ -80,6 +80,8 @@ public static class ServiceManager {
         services.AddDiscordClient(configService.Config.Token, DiscordIntents.All);
         logger.Info("Discord client initialized.");
 
+        services.AddVoiceNextExtension(new VoiceNextConfiguration());
+
         services.AddCommandsExtension(
             extension => {
 
