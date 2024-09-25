@@ -70,21 +70,14 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 """;
 
         chatToolService.AddToolFunction(JoinUserVC);
-        logger.Info(chatToolService.ToolFunctions.Count);
     }
 
     void JoinUserVC([Description("The user ID to join the voice channel of.")] ulong userID) {
-        DiscordChannel? channel = client.Guilds.Values.SelectMany(guild => guild.VoiceStates.Values)
-            .FirstOrDefault(voiceState => voiceState.User.Id == userID)?.Channel;
-
-        if(channel == null) {
-            logger.Warn("User with ID {UserID} is not in a voice channel.", userID);
-            throw new ArgumentException($"User with ID {userID} is not in a voice channel.");
-        }
+        DiscordChannel? channel = (client.Guilds.Values.SelectMany(guild => guild.VoiceStates.Values)
+            .FirstOrDefault(voiceState => voiceState.User.Id == userID)?.Channel) 
+            ?? throw new ArgumentException($"User with ID {userID} is not in a voice channel.");
 
         channel.ConnectAsync().Wait();
-
-        logger.Info("Joined voice channel {ChannelName} in guild {GuildName}.", channel.Name, channel.Guild.Name);
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
