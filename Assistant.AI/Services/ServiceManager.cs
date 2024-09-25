@@ -83,8 +83,6 @@ public static class ServiceManager {
 
         services.AddVoiceNextExtension(new VoiceNextConfiguration());
 
-        services.AddSingleton<ChatToolService>();
-
         services.AddCommandsExtension(
             extension => {
 
@@ -108,7 +106,7 @@ public static class ServiceManager {
         );
         logger.Info("Commands initialized.");
 
-        services.AddSingleton<IAiResponseService<List<ChatMessage>>, ReasoningAiService>();
+        services.AddSingleton<IAiResponseToolService<List<ChatMessage>>, ReasoningAiService>();
         services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
 
 

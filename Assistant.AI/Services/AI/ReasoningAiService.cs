@@ -1,4 +1,5 @@
 ﻿using AssistantAI.Services.Interfaces;
+using AssistantAI.Utilities;
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
@@ -8,7 +9,7 @@ namespace AssistantAI.Services;
 public readonly record struct Step(string Content);
 public readonly record struct Reasoning(Step[] Steps, string Conclusion);
 
-public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
+public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     private readonly static string reasoningJsonSchema = """
         {
@@ -35,17 +36,20 @@ public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
     private readonly IConfigService configService;
     private readonly ChatClient openAIClient;
 
-    private readonly ChatToolService chatToolService;
 
-    public ReasoningAiService(IConfigService configService, ChatToolService chatToolService) {
-        this.configService = configService;
-        this.chatToolService = chatToolService;
+
+    public ReasoningAiService(IConfigService configServic) {
+        this.configService = configServic;
 
         openAIClient = new ChatClient("gpt-4o-mini", this.configService.Config.OpenAIKey);
     }
 
 
     public async Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
+        return await PromptAsync(additionalMessages, systemMessage, new ToolsFunctions(new ToolsFunctionsBuilder()));
+    }
+
+    public async Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions toolsFunctions) {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {
@@ -56,21 +60,24 @@ public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
             ),
         };
 
-        foreach(ChatTool tool in chatToolService.ChatTools) {
+        foreach(ChatTool tool in toolsFunctions.ChatTools) {
             chatCompletionOptions.Tools.Add(tool);
         }
 
-        logger.Info(chatToolService.ChatTools.Count);
-
         var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
-        var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage);
+        var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions);
 
         logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", additionalMessages.Last().Content[0].Text, returnMessages.Last().Content[0].Text);
 
         return returnMessages;
     }
 
-    private async Task<List<ChatMessage>> HandleRespone(ChatCompletion chatCompletion, List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
+    private async Task<List<ChatMessage>> HandleRespone(
+        ChatCompletion chatCompletion, 
+        List<ChatMessage> additionalMessages, 
+        SystemChatMessage systemMessage, 
+        ToolsFunctions toolsFunctions) 
+    {
         var returnMessages = new List<ChatMessage>();
         var messages = new List<ChatMessage>(additionalMessages);
 
@@ -87,7 +94,7 @@ public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
                     logger.Info("Calling tool function: {FunctionName}", toolCall.FunctionName);
-                    string result = chatToolService.CallToolFunction(toolCall) ?? "Command succeeded.";
+                    string result = toolsFunctions.CallToolFunction(toolCall)?.ToString() ?? "Command succeeded.";
                     returnMessages.Add(ChatMessage.CreateToolChatMessage(toolCall.Id, result));
                 }
 

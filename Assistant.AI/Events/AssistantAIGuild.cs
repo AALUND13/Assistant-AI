@@ -1,5 +1,5 @@
-﻿using AssistantAI.Services;
-using AssistantAI.Services.Interfaces;
+﻿using AssistantAI.Services.Interfaces;
+using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -20,11 +20,11 @@ public record struct ChannelTimerInfo(int Amount, Timer Timer);
 public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
-    private readonly IAiResponseService<List<ChatMessage>> aiResponseService;
+    private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
     private readonly DiscordClient client;
-    private readonly ChatToolService chatToolService;
+    private readonly ToolsFunctions toolsFunctions;
 
     private readonly string systemPrompt;
     private readonly string replyDecisionPrompt;
@@ -36,16 +36,17 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
 
 
     public AssistantAIGuild(
-        IAiResponseService<List<ChatMessage>> aiResponseService, 
+        IAiResponseToolService<List<ChatMessage>> aiResponseService, 
         IAiResponseService<bool> aiDecisionService, 
-        DiscordClient client, 
-        ChatToolService chatToolService) 
+        DiscordClient client) 
     {
         this.aiResponseService = aiResponseService;
         this.aiDecisionService = aiDecisionService;
 
         this.client = client;
-        this.chatToolService = chatToolService;
+        toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
+            .WithToolFunction(JoinUserVC)
+        );
 
         systemPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
@@ -68,8 +69,6 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
 
                 Anything else you should not reply to.
                 """;
-
-        chatToolService.AddToolFunction(JoinUserVC);
     }
 
     void JoinUserVC([Description("The user ID to join the voice channel of.")] ulong userID) {
@@ -95,7 +94,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         if(shouldReply) {
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], ChatMessage.CreateSystemMessage(systemPrompt));
+            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], ChatMessage.CreateSystemMessage(systemPrompt), toolsFunctions);
             await eventArgs.Message.RespondAsync(assistantChatMessages.Last().Content[0].Text);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
