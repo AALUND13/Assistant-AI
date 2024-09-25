@@ -172,11 +172,11 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
             stringBuilder.Append($" | Replying to: {referenceUsername}");
         }
 
-        var chatMessageContentParts = new List<ChatMessageContentPart> {
-            ChatMessageContentPart.CreateTextMessageContentPart($"[{stringBuilder}] {discordMessage.Content}")
-        };
+        var chatMessageContentParts = new List<ChatMessageContentPart>();
 
         chatMessageContentParts.AddRange(imageURL.Select(url => ChatMessageContentPart.CreateImageMessageContentPart(url)));
+        chatMessageContentParts.Add(ChatMessageContentPart.CreateTextMessageContentPart($"[{stringBuilder}] {discordMessage.Content}"));
+
         return chatMessageContentParts;
     }
 
