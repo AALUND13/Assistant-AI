@@ -1,4 +1,5 @@
-﻿using AssistantAI.Services.Interfaces;
+﻿using AssistantAI.Services;
+using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus;
@@ -7,11 +8,8 @@ using DSharpPlus.EventArgs;
 using DSharpPlus.VoiceNext;
 using NLog;
 using OpenAI.Chat;
-using System;
 using System.ComponentModel;
-using System.Reflection;
 using System.Text;
-using System.Threading.Channels;
 using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events;
@@ -24,6 +22,8 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
+    private readonly IDatabaseService<Data> databaseService;
+
     private readonly DiscordClient client;
     private readonly ToolsFunctions toolsFunctions;
 
@@ -33,16 +33,38 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
     private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
     public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = [];
+    public Dictionary<ulong, List<ChatMessageData>> SerializedChatMessages => this.SerializeChatMessages();
 
+    public void LoadMessagesFromDatabase() {
+        Dictionary<ulong, GuildData> allGuildData = databaseService.Data.GuildData ?? new Dictionary<ulong, GuildData>();
+        foreach(ulong guildID in allGuildData.Keys) {
+            GuildData guildData = allGuildData[guildID];
 
+            if(guildData.ChatMessages != null)
+                ChatMessages.Add(guildID, guildData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
+        }
+    }
+
+    public void SaveMessagesToDatabase() {
+        foreach(ulong guildID in ChatMessages.Keys) {
+            GuildData guildData = databaseService.Data.GuildData.GetOrAdd(guildID, new GuildData());
+            guildData.ChatMessages = ChatMessages[guildID].Select(msg => msg.Serialize()).ToList();
+
+            databaseService.Data.GuildData[guildID] = guildData;
+        }
+
+        databaseService.SaveDatabase();
+    }
 
     public AssistantAIGuild(
-        IAiResponseToolService<List<ChatMessage>> aiResponseService, 
-        IAiResponseService<bool> aiDecisionService, 
-        DiscordClient client) 
-    {
+        IAiResponseToolService<List<ChatMessage>> aiResponseService,
+        IAiResponseService<bool> aiDecisionService,
+        IDatabaseService<Data> databaseService,
+        DiscordClient client) {
         this.aiResponseService = aiResponseService;
         this.aiDecisionService = aiDecisionService;
+
+        this.databaseService = databaseService;
 
         this.client = client;
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
@@ -70,11 +92,13 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
 
                 Anything else you should not reply to.
                 """;
+
+        LoadMessagesFromDatabase();
     }
 
     void JoinUserVC([Description("The user ID to join the voice channel of.")] ulong userID) {
         DiscordChannel? channel = (client.Guilds.Values.SelectMany(guild => guild.VoiceStates.Values)
-            .FirstOrDefault(voiceState => voiceState.User.Id == userID)?.Channel) 
+            .FirstOrDefault(voiceState => voiceState.User.Id == userID)?.Channel)
             ?? throw new ArgumentException($"User with ID {userID} is not in a voice channel.");
 
         channel.ConnectAsync().Wait();
@@ -99,7 +123,10 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
             await eventArgs.Message.RespondAsync(assistantChatMessages.Last().Content[0].Text);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
+            HandleChatMessage(assistantChatMessages.Last(), eventArgs.Guild.Id);
         }
+
+        SaveMessagesToDatabase();
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {
@@ -120,7 +147,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
             await channel.TriggerTypingAsync();
         };
 
-        var channelTimerInfo = channelTypingTimer.GetOrDefault(channel.Id, new ChannelTimerInfo(0, channelTimer));
+        var channelTimerInfo = channelTypingTimer.GetOrAdd(channel.Id, new ChannelTimerInfo(0, channelTimer));
         channelTimerInfo.Timer.Start();
         channelTimerInfo.Amount++;
 

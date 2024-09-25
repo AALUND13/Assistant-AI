@@ -65,9 +65,9 @@ public static class ReflectionExtension {
         foreach(ParameterInfo parameter in method.GetParameters()) {
             var parameterSchema = GetJsonSchemaFromParameter(parameter);
 
-            schema.Properties.Add(parameter.Name, parameterSchema);
+            schema.Properties.Add(parameter.Name!, parameterSchema);
             if(!parameter.IsOptional) {
-                schema.Required.Add(parameter.Name);
+                schema.Required.Add(parameter.Name!);
             }
         }
 

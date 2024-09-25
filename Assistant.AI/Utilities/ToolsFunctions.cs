@@ -1,18 +1,15 @@
 ﻿using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
-using NLog;
 using OpenAI.Chat;
 using System.ComponentModel;
 using System.Reflection;
 
 namespace AssistantAI.Utilities;
 
-public class ToolsFunctionsBuilder
-{
+public class ToolsFunctionsBuilder {
     public readonly Dictionary<Delegate, JSchema> ToolFunctions = new Dictionary<Delegate, JSchema>();
-    public ToolsFunctionsBuilder WithToolFunction(Delegate delegateMethod)
-    {
-        if (ToolFunctions.ContainsKey(delegateMethod))
+    public ToolsFunctionsBuilder WithToolFunction(Delegate delegateMethod) {
+        if(ToolFunctions.ContainsKey(delegateMethod))
             return this;
 
         JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod();
@@ -22,18 +19,15 @@ public class ToolsFunctionsBuilder
     }
 }
 
-public class ToolsFunctions
-{
+public class ToolsFunctions {
     ToolsFunctionsBuilder builder;
     public List<ChatTool> ChatTools { get => builder.ToolFunctions.Keys.Select(GetToolFunctions).ToList(); }
 
-    public ToolsFunctions(ToolsFunctionsBuilder builder)
-    {
+    public ToolsFunctions(ToolsFunctionsBuilder builder) {
         this.builder = builder;
     }
 
-    public ChatTool GetToolFunctions(Delegate delegateMethod)
-    {
+    public ChatTool GetToolFunctions(Delegate delegateMethod) {
         JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod();
         string methodDescription = delegateMethod.GetMethodInfo().GetCustomAttribute<DescriptionAttribute>()?.Description ?? "No description provided.";
 
@@ -44,12 +38,11 @@ public class ToolsFunctions
         );
     }
 
-    public object? CallToolFunction(ChatToolCall toolCall)
-    {
+    public object? CallToolFunction(ChatToolCall toolCall) {
         // Find the method in the ToolFunctions dictionary based on the function name
         Delegate? method = builder.ToolFunctions.Keys.FirstOrDefault(m => m.GetMethodInfo().Name == toolCall.FunctionName);
 
-        if (method == null)
+        if(method == null)
             throw new ArgumentException($"No tool function with the name '{toolCall.FunctionName}' was found.");
 
         JObject arguments = JObject.Parse(toolCall.FunctionArguments);
@@ -58,12 +51,9 @@ public class ToolsFunctions
         // Convert the json arguments to the corresponding parameter types
         object?[] args = arguments.Children().Select(a => a.First?.ToObject(parameters.First(p => p.Name == a.Path).ParameterType)).ToArray();
 
-        try
-        {
+        try {
             return method.DynamicInvoke(args);
-        }
-        catch (Exception e)
-        {
+        } catch(Exception e) {
             return e.Message;
         }
     }

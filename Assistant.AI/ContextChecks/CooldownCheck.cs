@@ -22,8 +22,8 @@ public class CooldownCheck : IContextCheck<CooldownAttribute> {
     private readonly static IDatabaseService<Data> DatabaseService = ServiceManager.GetService<IDatabaseService<Data>>();
 
     public ValueTask<string?> ExecuteCheckAsync(CooldownAttribute attribute, CommandContext context) {
-        UserData userData = DatabaseService.Data.Users.GetOrDefault(context.User.Id, new UserData());
-        double cooldown = userData.CommandCooldowns.GetOrDefault(context.Command.FullName, 0);
+        UserData userData = DatabaseService.Data.Users.GetOrAdd(context.User.Id, new UserData());
+        double cooldown = userData.CommandCooldowns.GetOrAdd(context.Command.FullName, 0);
         double timeLeft = cooldown - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
 

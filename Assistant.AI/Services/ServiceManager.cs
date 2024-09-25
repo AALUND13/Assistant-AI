@@ -22,8 +22,21 @@ using System.Text;
 
 namespace AssistantAI.Services;
 
-public record struct UserData(Dictionary<string, long> CommandCooldowns);
-public record struct Data(Dictionary<ulong, UserData> Users);
+public record struct ChatMessageContentPartData(string Text, Uri ImageUri);
+public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCall>? ToolCalls, string? ToolCallId);
+
+public struct UserData() {
+    public Dictionary<string, long> CommandCooldowns = [];
+}
+
+public struct GuildData() {
+    public List<ChatMessageData> ChatMessages = [];
+}
+
+public struct Data() {
+    public Dictionary<ulong, UserData> Users = [];
+    public Dictionary<ulong, GuildData> GuildData = [];
+}
 
 public static class ServiceManager {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
@@ -197,7 +210,7 @@ public static class ServiceManager {
         else {
             messageBuilder.WithContent(stringBuilder.ToString());
         }
-        
+
 
         if(eventArgs.Context is SlashCommandContext { Interaction.ResponseState: not DiscordInteractionResponseState.Unacknowledged }) {
             await eventArgs.Context.FollowupAsync(messageBuilder);
