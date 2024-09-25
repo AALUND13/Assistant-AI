@@ -10,6 +10,7 @@ using OpenAI.Chat;
 using System;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text;
 using System.Threading.Channels;
 using Timer = System.Timers.Timer;
 
@@ -133,8 +134,19 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
             .Where(attachment => attachment.MediaType!.StartsWith("image"))
             .Select(attachment => new Uri(attachment.Url!)).ToList();
 
+        DiscordMessage? messageReference = discordMessage.ReferencedMessage;
+        DiscordUser? referencedUser = messageReference?.Author;
+        string? referenceUsername = referencedUser?.GlobalName ?? referencedUser?.Username;
+
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.Append($"User: {discordMessage.Author!.GlobalName}");
+        stringBuilder.Append($" | ID: {discordMessage.Author!.Id}");
+        if(referenceUsername != null) {
+            stringBuilder.Append($" | Replying to: {referenceUsername}");
+        }
+
         var chatMessageContentParts = new List<ChatMessageContentPart> {
-            ChatMessageContentPart.CreateTextMessageContentPart($"[User: {discordMessage.Author!.GlobalName} | ID: {discordMessage.Author.Id}] {discordMessage.Content}")
+            ChatMessageContentPart.CreateTextMessageContentPart($"[{stringBuilder}] {discordMessage.Content}")
         };
 
         chatMessageContentParts.AddRange(imageURL.Select(url => ChatMessageContentPart.CreateImageMessageContentPart(url)));
