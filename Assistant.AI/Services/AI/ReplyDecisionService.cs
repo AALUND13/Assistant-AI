@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
+using System.Text.Json.Serialization;
 
 namespace AssistantAI.Services.AI;
 
@@ -14,9 +15,9 @@ public class ReplyDecisionService : IAiResponseService<bool> {
             "type": "object",
             "properties": {
                 "explanation": { "type": "string" },
-                "decision": { "type": "boolean" }
+                "isApproved": { "type": "boolean" }
             },
-            "required": ["decision", "explanation"],
+            "required": ["isApproved", "explanation"],
             "additionalProperties": false
         }
         """;
@@ -28,7 +29,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
     }
 
 
-    public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, ChatMessage chatMessage, SystemChatMessage systemMessage) {
+    public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
         var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
 
         var chatCompletionOptions = new ChatCompletionOptions() {
@@ -41,7 +42,6 @@ public class ReplyDecisionService : IAiResponseService<bool> {
 
         var chatCompletion = await openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
         var decision = HandleRespone(chatCompletion);
-        logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", chatMessage.Content[0].Text, decision, chatCompletion.ToString());
 
         return decision;
     }
@@ -49,8 +49,10 @@ public class ReplyDecisionService : IAiResponseService<bool> {
     private bool HandleRespone(ChatCompletion chatCompletion) {
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                Decision reasoning = JsonConvert.DeserializeObject<Decision>(chatCompletion.ToString());
-                return reasoning.IsApproved;
+                Decision decision = JsonConvert.DeserializeObject<Decision>(chatCompletion.ToString());
+                logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", chatCompletion.Content[0].Text, decision.IsApproved, decision.Explanation);
+                
+                return decision.IsApproved;
             default:
                 return false;
         }

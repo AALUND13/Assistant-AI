@@ -88,7 +88,8 @@ public static class ReflectionExtension {
             { typeof(bool), JSchemaType.Boolean },
             { typeof(double), JSchemaType.Number },
             { typeof(float), JSchemaType.Number },
-            { typeof(decimal), JSchemaType.Number }
+            { typeof(decimal), JSchemaType.Number },
+            { typeof(ulong), JSchemaType.Number }
         };
 
         if(type.IsArray || typeof(System.Collections.IEnumerable).IsAssignableFrom(type) && type != typeof(string)) {

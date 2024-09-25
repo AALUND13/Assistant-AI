@@ -3,5 +3,5 @@
 namespace AssistantAI.Services.Interfaces;
 
 public interface IAiResponseService<T> {
-    Task<T> PromptAsync(List<ChatMessage> additionalMessages, ChatMessage chatMessage, SystemChatMessage systemMessage);
+    Task<T> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage);
 }
