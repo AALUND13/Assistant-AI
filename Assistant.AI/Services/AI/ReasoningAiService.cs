@@ -60,6 +60,8 @@ public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
             chatCompletionOptions.Tools.Add(tool);
         }
 
+        logger.Info(chatToolService.ChatTools.Count);
+
         var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
         var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage);
 
@@ -72,18 +74,20 @@ public class ReasoningAiService : IAiResponseService<List<ChatMessage>> {
         var returnMessages = new List<ChatMessage>();
         var messages = new List<ChatMessage>(additionalMessages);
 
+        Reasoning reasoning = JsonConvert.DeserializeObject<Reasoning>(chatCompletion.ToString());
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                Reasoning reasoning = JsonConvert.DeserializeObject<Reasoning>(chatCompletion.ToString());
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Conclusion));
                 break;
             case ChatFinishReason.ToolCalls:
-                logger.Info("Handling tool calls in response.");
-                returnMessages.Add(new AssistantChatMessage(chatCompletion));
+                returnMessages.Add(new AssistantChatMessage(chatCompletion.ToolCalls, reasoning.Conclusion) { 
+                    FunctionCall = chatCompletion.FunctionCall  
+                });
+                
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
                     logger.Info("Calling tool function: {FunctionName}", toolCall.FunctionName);
-                    string result = chatToolService.CallToolFunction(toolCall) ?? "[No return value]";
+                    string result = chatToolService.CallToolFunction(toolCall) ?? "Command succeeded.";
                     returnMessages.Add(ChatMessage.CreateToolChatMessage(toolCall.Id, result));
                 }
 

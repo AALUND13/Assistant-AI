@@ -49,7 +49,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
 
         systemPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format <@USERID>. You can join a vc by using your function "JoinUserVC".
+                To mention users, use the format <@USERID>.
 
                 - Think through each task step by step.
                 - Respond with short, clear, and concise replies.
@@ -58,7 +58,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 """;
         replyDecisionPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format "<@USERID>".  You can join a vc by using your function "JoinUserVC".
+                To mention users, use the format "<@USERID>".
 
                 below is a list of think you SHOULD reply to:
                 - If the user asks a question.
@@ -115,7 +115,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
     }
 
     private async Task AddTypingTimerForChannel(DiscordChannel channel) {
-        var channelTimer = new Timer(1000);
+        var channelTimer = new Timer(5000);
         channelTimer.Elapsed += async (sender, e) => {
             await channel.TriggerTypingAsync();
         };
