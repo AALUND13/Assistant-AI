@@ -15,6 +15,7 @@
 	</ItemGroup>
 	
   <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02361" />
     <PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02361" />
     <PackageReference Include="DSharpPlus.VoiceNext" Version="5.0.0-nightly-02361" />
@@ -24,9 +25,9 @@
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.13" />
     <PackageReference Include="OpenAI" Version="2.0.0-beta.11" />
   </ItemGroup>
-
+	
   <ItemGroup>
-    <None Update="config.json">
+    <None Update=".env">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

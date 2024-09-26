@@ -1,6 +1,5 @@
 ﻿using AssistantAI.ContextChecks;
 using AssistantAI.Services.AI;
-using AssistantAI.Services.ConfigServices;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
