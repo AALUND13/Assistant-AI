@@ -38,8 +38,8 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
 
 
-    public ReasoningAiService(IConfigService configServic) {
-        this.configService = configServic;
+    public ReasoningAiService(IConfigService configService) {
+        this.configService = configService;
 
         openAIClient = new ChatClient("gpt-4o-mini", this.configService.Config.OpenAIKey);
     }
@@ -51,6 +51,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
     public async Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions toolsFunctions) {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
+        string userMessage = additionalMessages.Last().Content[0].Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
@@ -67,7 +68,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
         var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions);
 
-        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", additionalMessages.Last().Content[0].Text, returnMessages.Last().Content[0].Text);
+        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().Content[0].Text);
 
         return returnMessages;
     }

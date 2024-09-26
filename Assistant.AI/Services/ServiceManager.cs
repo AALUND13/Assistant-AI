@@ -23,7 +23,9 @@ using System.Text;
 namespace AssistantAI.Services;
 
 public record struct ChatMessageContentPartData(string Text, Uri ImageUri);
-public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCall>? ToolCalls, string? ToolCallId);
+public record struct ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
+
+public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
 
 public struct UserData() {
     public Dictionary<string, long> CommandCooldowns = [];

@@ -1,10 +1,12 @@
 ﻿using AssistantAI.Services;
+using NLog;
 using OpenAI.Chat;
 using System.Reflection;
 
 namespace AssistantAI.Utilities.Extension;
 
 public static class ChatMessageExtension {
+    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     public static ChatMessageData Serialize(this ChatMessage chatMessage) {
        var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
        var urls = new List<Uri>();
@@ -19,7 +21,9 @@ public static class ChatMessageExtension {
             Role = role,
             ContentParts = chatMessage.Content.Select(ctx => new ChatMessageContentPartData(ctx.Text, ctx.ImageUri)).ToList(),
 
-            ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls.ToList() : null,
+            ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
+                .Select(toolCall => new ChatToolCallData(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments)).ToList() : null,
+
             ToolCallId = chatMessage is ToolChatMessage ToolChatMessage ? ToolChatMessage.ToolCallId : null,
         };
     }
@@ -34,9 +38,13 @@ public static class ChatMessageExtension {
             }
         }
 
+        List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
+            .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.Id, toolCalls.FunctionName, toolCalls.FunctionArguments))?
+            .ToList();
+
         ChatMessage chatMessage = chatMessageData.Role switch {
             ChatMessageRole.System => ChatMessage.CreateSystemMessage(messageContentParts),
-            ChatMessageRole.Assistant => ChatMessage.CreateAssistantMessage(chatMessageData.ToolCalls, messageContentParts.Last().Text),
+            ChatMessageRole.Assistant => ChatMessage.CreateAssistantMessage(toolCalls, messageContentParts.Count > 0 ? messageContentParts.Last().Text : null),
             ChatMessageRole.Tool => ChatMessage.CreateToolChatMessage(chatMessageData.ToolCallId, messageContentParts),
             ChatMessageRole.User => ChatMessage.CreateUserMessage(messageContentParts),
 

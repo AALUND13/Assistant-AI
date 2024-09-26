@@ -81,6 +81,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 - Respond with short, clear, and concise replies.
                 - Do not include your name or ID in any of your responses.
                 - If the user mentions you, you should respond with "How can I assist you today?".
+                - if you refering to the user say you or your.
                 """;
         replyDecisionPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
@@ -128,7 +129,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
             await eventArgs.Message.RespondAsync(assistantChatMessages.Last().Content[0].Text);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
-            HandleChatMessage(assistantChatMessages.Last(), eventArgs.Guild.Id);
+            assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Guild.Id));
         }
 
         SaveMessagesToDatabase();
