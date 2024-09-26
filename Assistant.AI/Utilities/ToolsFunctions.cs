@@ -20,7 +20,7 @@ public class ToolsFunctionsBuilder {
 }
 
 public class ToolsFunctions {
-    ToolsFunctionsBuilder builder;
+    private readonly ToolsFunctionsBuilder builder;
     public List<ChatTool> ChatTools { get => builder.ToolFunctions.Keys.Select(GetToolFunctions).ToList(); }
 
     public ToolsFunctions(ToolsFunctionsBuilder builder) {
@@ -53,8 +53,8 @@ public class ToolsFunctions {
 
         try {
             return method.DynamicInvoke(args);
-        } catch(Exception e) {
-            return e.Message;
+        } catch(TargetInvocationException e) {
+            return e.InnerException?.Message ?? e.Message;
         }
     }
 }

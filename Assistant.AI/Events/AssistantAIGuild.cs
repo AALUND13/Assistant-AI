@@ -9,6 +9,7 @@ using DSharpPlus.VoiceNext;
 using NLog;
 using OpenAI.Chat;
 using System.ComponentModel;
+using System.Linq;
 using System.Text;
 using Timer = System.Timers.Timer;
 
@@ -70,6 +71,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
             .WithToolFunction(JoinUserVC)
         );
+        List<string> avaiableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
         systemPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
@@ -82,7 +84,10 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 """;
         replyDecisionPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format "<@USERID>".
+                To mention users, use the format "<@USERID>". Your decision will determine if you should reply to the user or not.
+                
+                Your are able to use these tools but only if you reply to the user
+                Tools that are available to you are: [{string.Join(", ", avaiableTools)}].
 
                 below is a list of think you SHOULD reply to:
                 - If the user asks a question.
