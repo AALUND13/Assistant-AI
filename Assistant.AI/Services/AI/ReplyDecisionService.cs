@@ -25,7 +25,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
     private readonly ChatClient openAIClient;
 
     public ReplyDecisionService(IConfigService configService) {
-        openAIClient = new ChatClient("gpt-4o-mini", configService.Config.OpenAIKey);
+        openAIClient = new ChatClient("gpt-4o-mini", configService.Config.OPENAI_KEY);
     }
 
 

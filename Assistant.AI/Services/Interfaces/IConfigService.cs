@@ -1,9 +1,6 @@
 ﻿namespace AssistantAI.Services.Interfaces;
 
-public struct ConfigStruct {
-    public string Token;
-    public string OpenAIKey;
-}
+public readonly record struct ConfigStruct(string DISCORD_TOKEN, string OPENAI_KEY);
 
 public interface IConfigService {
     ConfigStruct Config { get; }

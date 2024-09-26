@@ -1,4 +1,4 @@
 ﻿{
-    "Token": "TOKEN HERE",
-    "OpenAIKey": "OPENAI KEY HERE"
+    "DISCORD_TOKEN": "TOKEN HERE",
+    "OPENAI_KEY": "OPENAI KEY HERE"
 }

@@ -1,5 +1,6 @@
 ﻿using AssistantAI.ContextChecks;
 using AssistantAI.Services.AI;
+using AssistantAI.Services.ConfigServices;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
@@ -82,7 +83,7 @@ public static class ServiceManager {
             loggerBuilder.AddNLog();
         });
 
-        services.AddSingleton<IConfigService, ConfigService>();
+        services.AddSingleton<IConfigService, ENVConfigService>();
         services.AddSingleton<IDatabaseService<Data>, JsonDatabaseService<Data>>();
 
         ServiceProvider = services.BuildServiceProvider(); // Create a temporary service provider to get the config service
@@ -93,7 +94,7 @@ public static class ServiceManager {
 
 
         logger.Debug("Initializing Discord client services...");
-        services.AddDiscordClient(configService.Config.Token, DiscordIntents.All);
+        services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);
         logger.Info("Discord client initialized.");
 
         services.AddVoiceNextExtension(new VoiceNextConfiguration());

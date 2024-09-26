@@ -2,9 +2,9 @@
 using Newtonsoft.Json;
 using NLog;
 
-namespace AssistantAI.Services;
+namespace AssistantAI.Services.ConfigServices;
 
-public class ConfigService : IConfigService {
+public class FileConfigService : IConfigService {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
     public ConfigStruct Config { get; private set; }

@@ -41,7 +41,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     public ReasoningAiService(IConfigService configService) {
         this.configService = configService;
 
-        openAIClient = new ChatClient("gpt-4o-mini", this.configService.Config.OpenAIKey);
+        openAIClient = new ChatClient("gpt-4o-mini", this.configService.Config.OPENAI_KEY);
     }
 
 

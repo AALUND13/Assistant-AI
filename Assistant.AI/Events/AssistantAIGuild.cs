@@ -61,7 +61,8 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         IAiResponseToolService<List<ChatMessage>> aiResponseService,
         IAiResponseService<bool> aiDecisionService,
         IDatabaseService<Data> databaseService,
-        DiscordClient client) {
+        DiscordClient client) 
+    {
         this.aiResponseService = aiResponseService;
         this.aiDecisionService = aiDecisionService;
 
@@ -70,6 +71,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         this.client = client;
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
             .WithToolFunction(JoinUserVC)
+            .WithToolFunction(GetUserInfo)
         );
         List<string> avaiableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
@@ -81,7 +83,6 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 - Respond with short, clear, and concise replies.
                 - Do not include your name or ID in any of your responses.
                 - If the user mentions you, you should respond with "How can I assist you today?".
-                - if you refering to the user say you or your.
                 """;
         replyDecisionPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
@@ -102,12 +103,21 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         LoadMessagesFromDatabase();
     }
 
+    [Description("Join the voice channel of a user.")]
     void JoinUserVC([Description("The user ID to join the voice channel of.")] ulong userID) {
         DiscordChannel? channel = (client.Guilds.Values.SelectMany(guild => guild.VoiceStates.Values)
             .FirstOrDefault(voiceState => voiceState.User.Id == userID)?.Channel)
             ?? throw new ArgumentException($"User with ID {userID} is not in a voice channel.");
 
         channel.ConnectAsync().Wait();
+    }
+
+    [Description("Get information about a user.")]
+    string GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
+        DiscordUser? user = client.GetUserAsync(userID).Result
+            ?? throw new ArgumentException($"User with ID {userID} was not found.");
+
+        return $"[User: {user.GlobalName ?? user.Username} | ID: {user.Id}]";
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
