@@ -91,13 +91,11 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
                 Your are able to use these tools but only if you reply to the user
                 Tools that are available to you are: [{string.Join(", ", avaiableTools)}].
 
-                below is a list of think you SHOULD reply to:
-                - If the user asks a question.
-                - If the user asks for help.
-                - If the user mentions by using the format "<@{client.CurrentUser.Id}>" or "{client.CurrentUser.Username}".
-                - If the user replies to your message.
-
-                Anything else you should not reply to.
+                below is a list gudelines to make your decision:
+                - Don't respond to messages that are NOT directed or mentioned to you.
+                - You can respond to messages if a message is a question.
+                - If you're unsure of the answer, DO NOT respond.
+                - If the user only mentions you, you decision should be TRUE.
                 """;
 
         LoadMessagesFromDatabase();
