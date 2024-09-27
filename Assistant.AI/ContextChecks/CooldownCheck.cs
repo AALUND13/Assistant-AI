@@ -1,10 +1,10 @@
-﻿using AssistantAI.Services;
+﻿using AssistantAI.DataTypes;
+using AssistantAI.Services;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using NLog;
-using System.ComponentModel;
 
 namespace AssistantAI.ContextChecks;
 
@@ -16,8 +16,6 @@ public class CooldownAttribute : ContextCheckAttribute {
 }
 
 public class CooldownCheck : IContextCheck<CooldownAttribute> {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-
     private const string ErrorMessage = "You are on cooldown. Please wait {0} before using this command again.";
     private readonly static IDatabaseService<Data> DatabaseService = ServiceManager.GetService<IDatabaseService<Data>>();
 

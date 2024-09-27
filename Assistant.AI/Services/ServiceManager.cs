@@ -1,4 +1,5 @@
 ﻿using AssistantAI.ContextChecks;
+using AssistantAI.DataTypes;
 using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
@@ -21,34 +22,6 @@ using System.Reflection;
 using System.Text;
 
 namespace AssistantAI.Services;
-
-public enum BlacklistStatus {
-    Blacklisted,
-    Ingored
-}
-
-public record struct ChatMessageContentPartData(string Text, Uri ImageUri);
-public record struct ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
-
-public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
-
-public struct UserData() {
-    public Dictionary<string, long> CommandCooldowns = [];
-}
-
-public struct GuildData() {
-    public List<ChatMessageData> ChatMessages = [];
-    public List<(ulong userID, BlacklistStatus blacklistStatus)> BlacklistedUsers = [];
-}
-
-public struct Data() {
-    public Dictionary<ulong, UserData> Users = [];
-    public Dictionary<ulong, GuildData> GuildData = [];
-
-    public void TryAddGuildData(ulong guildID) {
-        GuildData.TryAdd(guildID, new GuildData());
-    }
-}
 
 public static class ServiceManager {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();

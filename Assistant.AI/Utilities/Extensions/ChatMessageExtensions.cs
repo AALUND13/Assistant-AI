@@ -1,4 +1,5 @@
-﻿using AssistantAI.Services;
+﻿using AssistantAI.DataTypes;
+using AssistantAI.Services;
 using NLog;
 using OpenAI.Chat;
 using System.Reflection;

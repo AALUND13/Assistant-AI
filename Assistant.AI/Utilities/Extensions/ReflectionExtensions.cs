@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
+namespace AssistantAI.Utilities.Extension;
+
 public static class ReflectionExtensions {
     /// <summary>
     /// Generates a JSON schema from the properties of the specified .NET type.

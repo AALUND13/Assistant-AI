@@ -1,4 +1,4 @@
-﻿using AssistantAI.Services;
+﻿using AssistantAI.DataTypes;
 using AssistantAI.Services.Interfaces;
 using OpenAI.Chat;
 

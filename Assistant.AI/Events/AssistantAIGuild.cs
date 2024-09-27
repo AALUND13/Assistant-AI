@@ -1,4 +1,4 @@
-﻿using AssistantAI.Services;
+﻿using AssistantAI.DataTypes;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
@@ -9,7 +9,6 @@ using DSharpPlus.VoiceNext;
 using NLog;
 using OpenAI.Chat;
 using System.ComponentModel;
-using System.Linq;
 using System.Text;
 using Timer = System.Timers.Timer;
 
@@ -61,8 +60,7 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
         IAiResponseToolService<List<ChatMessage>> aiResponseService,
         IAiResponseService<bool> aiDecisionService,
         IDatabaseService<Data> databaseService,
-        DiscordClient client) 
-    {
+        DiscordClient client) {
         this.aiResponseService = aiResponseService;
         this.aiDecisionService = aiDecisionService;
 
