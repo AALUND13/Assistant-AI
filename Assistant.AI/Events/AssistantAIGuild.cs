@@ -119,9 +119,12 @@ public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildCh
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        if(eventArgs.Author.IsBot
-            || eventArgs.Channel.IsPrivate
-            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages))
+        if(eventArgs.Author.IsBot // Check if the author is a bot
+            || eventArgs.Channel.IsPrivate // Check if the channel is a direct message
+            || eventArgs.Channel.IsNSFW // Check if the channel is NSFW
+            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
+            || databaseService.Data.GuildData.GetValueOrDefault(eventArgs.Guild.Id).BlacklistedUsers.Any(blacklistedUser => blacklistedUser.userID == eventArgs.Author.Id) // Check if the author is blacklisted
+            || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
             return;
 
         ChatMessages.TryAdd(eventArgs.Guild.Id, new List<ChatMessage>());

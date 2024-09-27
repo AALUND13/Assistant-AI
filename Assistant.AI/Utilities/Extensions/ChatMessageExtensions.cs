@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace AssistantAI.Utilities.Extension;
 
-public static class ChatMessageExtension {
+public static class ChatMessageExtensions {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     public static ChatMessageData Serialize(this ChatMessage chatMessage) {
        var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
