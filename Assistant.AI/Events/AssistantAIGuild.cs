@@ -16,7 +16,7 @@ namespace AssistantAI.Events;
 
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
-public class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
+public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;

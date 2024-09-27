@@ -59,7 +59,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 jsonSchemaFormatName: "reasoning",
                 jsonSchema: BinaryData.FromString(reasoningJsonSchema),
                 jsonSchemaIsStrict: true
-            ),
+            )
         };
 
         foreach(ChatTool tool in toolsFunctions.ChatTools) {
