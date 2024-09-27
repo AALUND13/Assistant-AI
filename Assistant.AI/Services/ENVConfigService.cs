@@ -13,20 +13,36 @@ public class ENVConfigService : IConfigService {
         Env.Load();
 
         var propertyNames = GetPropertyNames(); ;
-        var properties = new List<string>();
+        var properties = new List<object>();
 
         logger.Info("Loading configuration from environment variables.");
         foreach(var property in propertyNames) {
             if(Environment.GetEnvironmentVariable(property, EnvironmentVariableTarget.User) != null) {
                 properties.Add(Environment.GetEnvironmentVariable(property, EnvironmentVariableTarget.User)!);
             } else if(Env.GetString(property) != null) {
-                properties.Add(Env.GetString(property));
+                properties.Add(GetPropertyValueByType(property));
             } else {
                 logger.Error($"Environment variable {property} not found.");
             }
         }
 
         Config = (ConfigStruct)Activator.CreateInstance(typeof(ConfigStruct), properties.ToArray())!;
+    }
+
+    private object GetPropertyValueByType(string propertyName) {
+        var typeMapping = new Dictionary<Type, Func<string, object>> {
+            { typeof(string), value => Env.GetString(value) },
+            { typeof(double), value => Env.GetDouble(value) },
+            { typeof(bool), value => Env.GetBool(value) },
+            { typeof(int), value => Env.GetInt(value) },
+        };
+
+        Type type = typeof(ConfigStruct).GetProperty(propertyName)!.PropertyType;
+
+        if(!typeMapping.ContainsKey(type))
+            throw new NotImplementedException($"Type {type} is not supported.");
+
+        return typeMapping[type](propertyName);
     }
 
     private List<string> GetPropertyNames() {
