@@ -29,13 +29,21 @@ public static class ChatMessageExtensions {
         };
     }
 
+    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
+        var assistantChatMessage = new AssistantChatMessage(toolCalls ?? new List<ChatToolCall>());
+        if(content != null)
+            assistantChatMessage.Content.Add(ChatMessageContentPart.CreateTextPart(content));
+
+        return assistantChatMessage;
+    }
+
     public static ChatMessage Deserialize(this ChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];
         foreach(ChatMessageContentPartData contentPartData in chatMessageData.ContentParts) {
             if(contentPartData.ImageUri != null) {
-                messageContentParts.Add(ChatMessageContentPart.CreateImageMessageContentPart(contentPartData.ImageUri));
+                messageContentParts.Add(ChatMessageContentPart.CreateImagePart(contentPartData.ImageUri));
             } else {
-                messageContentParts.Add(ChatMessageContentPart.CreateTextMessageContentPart(contentPartData.Text));
+                messageContentParts.Add(ChatMessageContentPart.CreateTextPart(contentPartData.Text));
             }
         }
 
@@ -45,8 +53,8 @@ public static class ChatMessageExtensions {
 
         ChatMessage chatMessage = chatMessageData.Role switch {
             ChatMessageRole.System => ChatMessage.CreateSystemMessage(messageContentParts),
-            ChatMessageRole.Assistant => ChatMessage.CreateAssistantMessage(toolCalls, messageContentParts.Count > 0 ? messageContentParts.Last().Text : null),
-            ChatMessageRole.Tool => ChatMessage.CreateToolChatMessage(chatMessageData.ToolCallId, messageContentParts),
+            ChatMessageRole.Assistant => CreateAssistantChatMessage(toolCalls, messageContentParts.Count > 0 ? messageContentParts.Last().Text : null),
+            ChatMessageRole.Tool => ChatMessage.CreateToolMessage(chatMessageData.ToolCallId, messageContentParts),
             ChatMessageRole.User => ChatMessage.CreateUserMessage(messageContentParts),
 
             _ => throw new NotImplementedException(),

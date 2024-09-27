@@ -30,18 +30,18 @@ public class ReplyDecisionService : IAiResponseService<bool> {
 
 
     public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
-        var chatMessages = BuildChatMessages(additionalMessages, systemMessage);
+        var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
         var userMessage = additionalMessages.Last().Content[0].Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                name: "reasoning",
+                jsonSchemaFormatName: "reasoning",
                 jsonSchema: BinaryData.FromString(reasoningJsonSchema),
-                strictSchemaEnabled: true
+                jsonSchemaIsStrict: true
             )
         };
 
-        var chatCompletion = await openAIClient.CompleteChatAsync(chatMessages, chatCompletionOptions);
+        var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
         var decision = HandleRespone(chatCompletion);
 
         logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", userMessage, decision.IsApproved, decision.Explanation);

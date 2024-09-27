@@ -55,9 +55,9 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
-                name: "reasoning",
+                jsonSchemaFormatName: "reasoning",
                 jsonSchema: BinaryData.FromString(reasoningJsonSchema),
-                strictSchemaEnabled: true
+                jsonSchemaIsStrict: true
             ),
         };
 
@@ -65,7 +65,13 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
             chatCompletionOptions.Tools.Add(tool);
         }
 
-        var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+        ChatCompletion chatCompletion;
+        try {
+            chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+        } catch (Exception e) {
+            logger.Error(e, "Failed to generate response for message: {UserMessage}", userMessage);
+            return [ChatMessage.CreateAssistantMessage("Failed to generate response. Please try again.")];
+        }
         var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions);
 
         logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().Content[0].Text);
@@ -88,15 +94,14 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Conclusion));
                 break;
             case ChatFinishReason.ToolCalls:
-                returnMessages.Add(new AssistantChatMessage(chatCompletion.ToolCalls, reasoning.Conclusion) { 
-                    FunctionCall = chatCompletion.FunctionCall  
-                });
+                var assistantChatMessage = new AssistantChatMessage(chatCompletion.ToolCalls);
+                returnMessages.Add(assistantChatMessage);
                 
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
                     logger.Info("Calling tool function: {FunctionName}", toolCall.FunctionName);
                     string result = toolsFunctions.CallToolFunction(toolCall)?.ToString() ?? "Command succeeded.";
-                    returnMessages.Add(ChatMessage.CreateToolChatMessage(toolCall.Id, result));
+                    returnMessages.Add(ChatMessage.CreateToolMessage(toolCall.Id, result));
                 }
 
                 messages.AddRange(returnMessages);

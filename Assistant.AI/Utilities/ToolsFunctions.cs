@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using AssistantAI.Utilities.Extension;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
 using OpenAI.Chat;
 using System.ComponentModel;
