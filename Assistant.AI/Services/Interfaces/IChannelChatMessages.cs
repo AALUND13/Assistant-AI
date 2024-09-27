@@ -2,7 +2,7 @@
 
 namespace AssistantAI.Services.Interfaces;
 
-public interface IGuildChatMessages {
+public interface IChannelChatMessages {
     Dictionary<ulong, List<ChatMessage>> ChatMessages { get; }
-    void HandleChatMessage(ChatMessage chatMessage, ulong guildID);
+    void HandleChatMessage(ChatMessage chatMessage, ulong channelID);
 }

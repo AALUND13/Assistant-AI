@@ -15,7 +15,7 @@ namespace AssistantAI.Events;
 
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
-public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IGuildChatMessages {
+public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IChannelChatMessages {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
@@ -37,21 +37,20 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
     public Dictionary<ulong, List<ChatMessageData>> SerializedChatMessages => this.SerializeChatMessages();
 
     public void LoadMessagesFromDatabase() {
-        Dictionary<ulong, GuildData> allGuildData = databaseService.Data.GuildData ?? new Dictionary<ulong, GuildData>();
-        foreach(ulong guildID in allGuildData.Keys) {
-            GuildData guildData = allGuildData[guildID];
+        Dictionary<ulong, ChannelData> channelsData = databaseService.Data.ChannelData;
+        foreach(ulong channelID in channelsData.Keys) {
+            ChannelData channelData = channelsData[channelID];
 
-            if(guildData.ChatMessages != null)
-                ChatMessages.Add(guildID, guildData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
+            ChatMessages.Add(channelID, channelData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
         }
     }
 
     public void SaveMessagesToDatabase() {
-        foreach(ulong guildID in ChatMessages.Keys) {
-            GuildData guildData = databaseService.Data.GuildData.GetOrAdd(guildID, new GuildData());
-            guildData.ChatMessages = ChatMessages[guildID].Select(msg => msg.Serialize()).ToList();
+        foreach(ulong channelID in ChatMessages.Keys) {
+            ChannelData channelData = databaseService.Data.GetOrDefaultChannelData(channelID);
+            channelData.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
 
-            databaseService.Data.GuildData[guildID] = guildData;
+            databaseService.Data.ChannelData[channelID] = channelData;
         }
 
         databaseService.SaveDatabase();
@@ -69,7 +68,7 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
             .WithToolFunction(JoinUserVC)
             .WithToolFunction(GetUserInfo)
         );
-        List<string> avaiableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
+        List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
         systemPrompt = $"""
                 You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
@@ -81,18 +80,19 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
                 - If the user mentions you, you should respond with "How can I assist you today?".
                 """;
         replyDecisionPrompt = $"""
-                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format "<@USERID>". Your decision will determine if you should reply to the user or not.
-                
-                Your are able to use these tools but only if you reply to the user
-                Tools that are available to you are: [{string.Join(", ", avaiableTools)}].
+            You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+            Your decision determines if you should respond to the user. 
 
-                below is a list gudelines to make your decision:
-                - Don't respond to messages that are NOT directed or mentioned to you.
-                - You can respond to messages if a message is a question.
-                - If you're unsure of the answer, DO NOT respond.
-                - If the user only mentions you, you decision should be TRUE.
-                """;
+            Use these guidelines to make your decision:
+
+            - Only respond to messages where you are directly mentioned or tagged.
+            - If the message is a question, you may respond.
+            - If you are unsure of the answer, do not respond.
+            - If the user only mentions you without a question, your decision should be TRUE.
+            - You can use the tools available to you [{string.Join(", ", availableTools)}] but only if you decide to respond.
+    
+            Based on the guidelines above, your decision should be TRUE if you will respond to this message, otherwise it should be FALSE.
+            """;
 
         LoadMessagesFromDatabase();
     }
@@ -106,16 +106,16 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
             || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
             return;
 
-        ChatMessages.TryAdd(eventArgs.Guild.Id, new List<ChatMessage>());
+        ChatMessages.TryAdd(eventArgs.Channel.Id, new List<ChatMessage>());
 
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
-        HandleChatMessage(userChatMessage, eventArgs.Guild.Id);
+        HandleChatMessage(userChatMessage, eventArgs.Channel.Id);
 
-        bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Guild.Id], ChatMessage.CreateSystemMessage(replyDecisionPrompt));
+        bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(replyDecisionPrompt));
         if(shouldReply) {
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], ChatMessage.CreateSystemMessage(systemPrompt), toolsFunctions);
+            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(systemPrompt), toolsFunctions);
             foreach(var message in assistantChatMessages) {
                 var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
                 if(textPartIndex == -1) continue;
@@ -129,10 +129,10 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
                 message.Content[textPartIndex] = ChatMessageContentPart.CreateTextPart(textPart);
             }
 
+            RemoveTypingTimerForChannel(eventArgs.Channel);
             await eventArgs.Message.RespondAsync(assistantChatMessages.Last().GetTextMessagePart().Text);
 
-            RemoveTypingTimerForChannel(eventArgs.Channel);
-            assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Guild.Id));
+            assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Channel.Id));
         }
 
         SaveMessagesToDatabase();
@@ -189,11 +189,15 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         return chatMessageContentParts;
     }
 
-    public void HandleChatMessage(ChatMessage chatMessage, ulong guildID) {
-        ChatMessages[guildID].Add(chatMessage);
+    public void HandleChatMessage(ChatMessage chatMessage, ulong channelID) {
+        if(!ChatMessages.ContainsKey(channelID)) {
+            ChatMessages[channelID] = new List<ChatMessage>();
+        }
 
-        while(ChatMessages[guildID].Count > 50) {
-            ChatMessages[guildID].RemoveAt(0);
+        ChatMessages[channelID].Add(chatMessage);
+
+        while(ChatMessages[channelID].Count > 50) {
+            ChatMessages[channelID].RemoveAt(0);
         }
     }
 }
