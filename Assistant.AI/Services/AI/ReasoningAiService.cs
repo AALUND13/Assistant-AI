@@ -1,5 +1,6 @@
 ﻿using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
+using AssistantAI.Utilities.Extension;
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
@@ -51,7 +52,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
     public async Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions toolsFunctions) {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
-        string userMessage = additionalMessages.Last().Content[0].Text;
+        string userMessage = additionalMessages.Last().GetTextMessagePart().Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
@@ -74,7 +75,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         }
         var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions);
 
-        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().Content[0].Text);
+        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().GetTextMessagePart().Text);
 
         return returnMessages;
     }

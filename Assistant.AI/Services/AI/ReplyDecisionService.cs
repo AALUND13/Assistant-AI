@@ -1,8 +1,8 @@
 ﻿using AssistantAI.Services.Interfaces;
+using AssistantAI.Utilities.Extension;
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
-using System.Text.Json.Serialization;
 
 namespace AssistantAI.Services.AI;
 
@@ -31,7 +31,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
 
     public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
-        var userMessage = additionalMessages.Last().Content[0].Text;
+        var userMessage = additionalMessages.Last().GetTextMessagePart().Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
@@ -41,7 +41,14 @@ public class ReplyDecisionService : IAiResponseService<bool> {
             )
         };
 
-        var chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+
+        ChatCompletion chatCompletion;
+        try {
+            chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+        } catch(Exception e) {
+            logger.Error(e, "Failed to generate response for message: {UserMessage}", userMessage);
+            return false;
+        }
         var decision = HandleRespone(chatCompletion);
 
         logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", userMessage, decision.IsApproved, decision.Explanation);
@@ -53,7 +60,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
                 Decision decision = JsonConvert.DeserializeObject<Decision>(chatCompletion.ToString());
-                
+
                 return decision;
             default:
                 return new Decision("Unable to make a decision", false);

@@ -1,5 +1,4 @@
 ﻿using AssistantAI.DataTypes;
-using AssistantAI.Services;
 using NLog;
 using OpenAI.Chat;
 using System.Reflection;
@@ -7,10 +6,9 @@ using System.Reflection;
 namespace AssistantAI.Utilities.Extension;
 
 public static class ChatMessageExtensions {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     public static ChatMessageData Serialize(this ChatMessage chatMessage) {
-       var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
-       var urls = new List<Uri>();
+        var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
+        var urls = new List<Uri>();
 
         foreach(ChatMessageContentPart part in chatMessage.Content) {
             if(part.ImageUri != null) {
@@ -29,12 +27,9 @@ public static class ChatMessageExtensions {
         };
     }
 
-    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
-        var assistantChatMessage = new AssistantChatMessage(toolCalls ?? new List<ChatToolCall>());
-        if(content != null)
-            assistantChatMessage.Content.Add(ChatMessageContentPart.CreateTextPart(content));
 
-        return assistantChatMessage;
+    public static ChatMessageContentPart GetTextMessagePart(this ChatMessage chatMessage) {
+        return chatMessage.Content.First(ctx => ctx is ChatMessageContentPart part && part.Text != null);
     }
 
     public static ChatMessage Deserialize(this ChatMessageData chatMessageData) {
@@ -61,5 +56,12 @@ public static class ChatMessageExtensions {
         };
 
         return chatMessage;
+    }
+    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
+        var assistantChatMessage = new AssistantChatMessage(toolCalls ?? new List<ChatToolCall>());
+        if(content != null)
+            assistantChatMessage.Content.Add(ChatMessageContentPart.CreateTextPart(content));
+
+        return assistantChatMessage;
     }
 }

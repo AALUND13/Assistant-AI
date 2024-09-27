@@ -1,6 +1,5 @@
 ﻿using AssistantAI.Services;
 using AssistantAI.Utilities;
-using Newtonsoft.Json;
 using NLog;
 
 namespace AssistantAI;
