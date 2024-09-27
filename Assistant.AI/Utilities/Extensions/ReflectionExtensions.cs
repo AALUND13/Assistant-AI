@@ -11,21 +11,29 @@ public static class ReflectionExtensions {
     /// </summary>
     /// <param name="type">The .NET type to generate the schema from.</param>
     /// <returns>A <see cref="JSchema"/> object representing the JSON schema of the type.</returns>
-    public static JSchema GetJsonSchemaFromType(this Type type) {
+    public static JSchema GetJsonSchemaFromType(this Type type, bool addDefaultDescription = true) {
         var schema = new JSchema {
             Type = JSchemaType.Object,
-            Description = type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "No description provided."
+            Description = type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (addDefaultDescription ? "No description provided." : null),
+            AllowAdditionalProperties = false
         };
 
         foreach(PropertyInfo property in type.GetProperties()) {
             var propertySchema = new JSchema {
-                Title = property.Name,
-                Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "No description provided.",
+                Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (addDefaultDescription ? "No description provided." : null),
                 Type = GetSchemaTypeFromType(property.PropertyType)
             };
 
+            // Check if the property is an object and generate a schema for it
+            if(propertySchema.Type == JSchemaType.Object) {
+                propertySchema = GetJsonSchemaFromType(property.PropertyType);
+                propertySchema.AllowAdditionalProperties = false;
+            } else if (propertySchema.Type == JSchemaType.Array) {
+                propertySchema.Items.Add(GetJsonSchemaFromType(property.PropertyType.GetElementType()!, addDefaultDescription));
+            }
             schema.Properties.Add(property.Name, propertySchema);
             if(property.GetCustomAttribute<RequiredAttribute>() != null) {
+
                 schema.Required.Add(property.Name);
             }
         }

@@ -3,24 +3,15 @@ using AssistantAI.Utilities.Extension;
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
+using System.ComponentModel.DataAnnotations;
 
 namespace AssistantAI.Services.AI;
 
-public readonly record struct Decision(string Explanation, bool IsApproved);
+public readonly record struct Decision([property: Required] string Explanation, [property: Required] bool IsApproved);
 
 public class ReplyDecisionService : IAiResponseService<bool> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-    private readonly static string reasoningJsonSchema = """
-        {
-            "type": "object",
-            "properties": {
-                "explanation": { "type": "string" },
-                "isApproved": { "type": "boolean" }
-            },
-            "required": ["isApproved", "explanation"],
-            "additionalProperties": false
-        }
-        """;
+    private static string ReasoningJsonSchema => typeof(Decision).GetJsonSchemaFromType(false).ToString();
 
     private readonly ChatClient openAIClient;
 
@@ -36,7 +27,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
                 jsonSchemaFormatName: "reasoning",
-                jsonSchema: BinaryData.FromString(reasoningJsonSchema),
+                jsonSchema: BinaryData.FromString(ReasoningJsonSchema),
                 jsonSchemaIsStrict: true
             )
         };

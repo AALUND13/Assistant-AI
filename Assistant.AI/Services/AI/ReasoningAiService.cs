@@ -4,35 +4,16 @@ using AssistantAI.Utilities.Extension;
 using Newtonsoft.Json;
 using NLog;
 using OpenAI.Chat;
+using System.ComponentModel.DataAnnotations;
 
 namespace AssistantAI.Services;
 
-public readonly record struct Step(string Content);
-public readonly record struct Reasoning(Step[] Steps, string Conclusion);
+public readonly record struct Step([property: Required] string Content);
+public readonly record struct Reasoning([property: Required] Step[] Steps, [property: Required] string Conclusion);
 
 public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-    private readonly static string reasoningJsonSchema = """
-        {
-            "type": "object",
-            "properties": {
-                "steps": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "content": { "type": "string" }
-                        },
-                        "required": ["content"],
-                        "additionalProperties": false
-                    }
-                },
-                "conclusion": { "type": "string" }
-            },
-            "required": ["steps", "conclusion"],
-            "additionalProperties": false
-        }
-        """;
+    private static string ReasoningJsonSchema => typeof(Reasoning).GetJsonSchemaFromType(false).ToString();
 
     private readonly IConfigService configService;
     private readonly ChatClient openAIClient;
@@ -57,7 +38,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
                 jsonSchemaFormatName: "reasoning",
-                jsonSchema: BinaryData.FromString(reasoningJsonSchema),
+                jsonSchema: BinaryData.FromString(ReasoningJsonSchema),
                 jsonSchemaIsStrict: true
             )
         };
@@ -95,7 +76,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Conclusion));
                 break;
             case ChatFinishReason.ToolCalls:
-                var assistantChatMessage = new AssistantChatMessage(chatCompletion.ToolCalls);
+                var assistantChatMessage = new AssistantChatMessage(chatCompletion);
                 returnMessages.Add(assistantChatMessage);
                 
 

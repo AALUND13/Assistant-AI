@@ -38,7 +38,7 @@ public class ENVConfigService : IConfigService {
         Type type = typeof(ConfigStruct).GetProperty(propertyName)!.PropertyType;
 
         if(!typeMapping.ContainsKey(type))
-            throw new NotImplementedException($"Type {type} is not supported.");
+            throw new NotSupportedException($"Type {type} is not supported.");
 
         return typeMapping[type](propertyName);
     }
