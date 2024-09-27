@@ -17,9 +17,7 @@ public class ENVConfigService : IConfigService {
 
         logger.Info("Loading configuration from environment variables.");
         foreach(var property in propertyNames) {
-            if(Environment.GetEnvironmentVariable(property, EnvironmentVariableTarget.User) != null) {
-                properties.Add(Environment.GetEnvironmentVariable(property, EnvironmentVariableTarget.User)!);
-            } else if(Env.GetString(property) != null) {
+            if(Environment.GetEnvironmentVariable(property, EnvironmentVariableTarget.Process) != null) {
                 properties.Add(GetPropertyValueByType(property));
             } else {
                 logger.Error($"Environment variable {property} not found.");
