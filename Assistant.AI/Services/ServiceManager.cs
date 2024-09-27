@@ -104,6 +104,8 @@ public static class ServiceManager {
         );
         logger.Info("Commands initialized.");
 
+        services.AddSingleton<IFilterService, AIFilterService>();
+
         services.AddSingleton<IAiResponseToolService<List<ChatMessage>>, ReasoningAiService>();
         services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
 

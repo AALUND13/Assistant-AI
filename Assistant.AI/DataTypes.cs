@@ -1,6 +1,7 @@
 ﻿using OpenAI.Chat;
 
 namespace AssistantAI.DataTypes;
+
 public enum BlacklistStatus {
     Blacklisted,
     Ingored

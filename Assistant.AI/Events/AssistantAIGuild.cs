@@ -5,10 +5,9 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
-using DSharpPlus.VoiceNext;
+using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using OpenAI.Chat;
-using System.ComponentModel;
 using System.Text;
 using Timer = System.Timers.Timer;
 
@@ -23,6 +22,8 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
     private readonly IAiResponseService<bool> aiDecisionService;
 
     private readonly IDatabaseService<Data> databaseService;
+
+    private readonly List<IFilterService> filterServices;
 
     private readonly DiscordClient client;
     private readonly ToolsFunctions toolsFunctions;
@@ -56,17 +57,14 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         databaseService.SaveDatabase();
     }
 
-    public AssistantAIGuild(
-        IAiResponseToolService<List<ChatMessage>> aiResponseService,
-        IAiResponseService<bool> aiDecisionService,
-        IDatabaseService<Data> databaseService,
-        DiscordClient client) {
-        this.aiResponseService = aiResponseService;
-        this.aiDecisionService = aiDecisionService;
+    public AssistantAIGuild(IServiceProvider serviceProvider) {
+        aiResponseService = serviceProvider.GetRequiredService<IAiResponseToolService<List<ChatMessage>>>();
+        aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
+        databaseService = serviceProvider.GetRequiredService<IDatabaseService<Data>>();
+        client = serviceProvider.GetRequiredService<DiscordClient>();
 
-        this.databaseService = databaseService;
+        filterServices = serviceProvider.GetServices<IFilterService>().ToList();
 
-        this.client = client;
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
             .WithToolFunction(JoinUserVC)
             .WithToolFunction(GetUserInfo)
@@ -118,7 +116,20 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
             await AddTypingTimerForChannel(eventArgs.Channel);
 
             List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Guild.Id], ChatMessage.CreateSystemMessage(systemPrompt), toolsFunctions);
-            await eventArgs.Message.RespondAsync(assistantChatMessages.Last().Content[0].Text);
+            foreach(var message in assistantChatMessages) {
+                var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
+                if(textPartIndex == -1) continue;
+
+                string textPart = message.Content[textPartIndex].Text!;
+
+                foreach(var filterService in filterServices) {
+                    textPart = await filterService.FilterAsync(textPart);
+                }
+
+                message.Content[textPartIndex] = ChatMessageContentPart.CreateTextPart(textPart);
+            }
+
+            await eventArgs.Message.RespondAsync(assistantChatMessages.Last().GetTextMessagePart().Text);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
             assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Guild.Id));
