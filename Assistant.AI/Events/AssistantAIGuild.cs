@@ -16,8 +16,6 @@ namespace AssistantAI.Events;
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
 public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IChannelChatMessages {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
@@ -27,9 +25,6 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
 
     private readonly DiscordClient client;
     private readonly ToolsFunctions toolsFunctions;
-
-    private readonly string systemPrompt;
-    private readonly string replyDecisionPrompt;
 
     private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
@@ -65,34 +60,9 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         filterServices = serviceProvider.GetServices<IFilterService>().ToList();
 
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
-            .WithToolFunction(JoinUserVC)
             .WithToolFunction(GetUserInfo)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
-
-        systemPrompt = $"""
-                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format <@USERID>.
-
-                - Think through each task step by step.
-                - Respond with short, clear, and concise replies.
-                - Do not include your name or ID in any of your responses.
-                - If the user mentions you, you should respond with "How can I assist you today?".
-                """;
-        replyDecisionPrompt = $"""
-            You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-            Your decision determines if you should respond to the user. 
-
-            Use these guidelines to make your decision:
-
-            - Only respond to messages where you are directly mentioned or tagged.
-            - If the message is a question, you may respond.
-            - If you are unsure of the answer, do not respond.
-            - If the user only mentions you without a question, your decision should be TRUE.
-            - You can use the tools available to you [{string.Join(", ", availableTools)}] but only if you decide to respond.
-    
-            Based on the guidelines above, your decision should be TRUE if you will respond to this message, otherwise it should be FALSE.
-            """;
 
         LoadMessagesFromDatabase();
     }
@@ -111,11 +81,11 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
         HandleChatMessage(userChatMessage, eventArgs.Channel.Id);
 
-        bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(replyDecisionPrompt));
+        bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message)));
         if(shouldReply) {
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(systemPrompt), toolsFunctions);
+            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions);
             foreach(var message in assistantChatMessages) {
                 var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
                 if(textPartIndex == -1) continue;
@@ -199,5 +169,40 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         while(ChatMessages[channelID].Count > 50) {
             ChatMessages[channelID].RemoveAt(0);
         }
+    }
+
+    private string GenerateSystemPrompt(DiscordMessage message) {
+        return $"""
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                To mention users, use the format <@USERID>.
+
+                Guild Information: [Guild: {message.Channel?.Guild.Name ?? "Unknow"} | ID: {message.Channel?.Guild.Id.ToString() ?? "Unknow"}]
+                Channel Information: [Channel: {message.Channel?.Name ?? "Unknow"} | ID: {message.Channel?.Id.ToString() ?? "Unknow"}]
+
+                - Think through each task step by step.
+                - Respond with short, clear, and concise replies.
+                - Do not include your name or ID in any of your responses.
+                - If the user mentions you, you should respond with "How can I assist you today?".
+                """;
+    }
+
+    private string GenerateReplyDecisionPrompt(DiscordMessage message) {
+        return $"""
+                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
+                Your decision determines if you should respond to the user. 
+
+                Guild Information: [Guild: {message.Channel?.Guild.Name ?? "Unknow"} | ID: {message.Channel?.Guild.Id.ToString() ?? "Unknow"}]
+                Channel Information: [Channel: {message.Channel?.Name ?? "Unknow"} | ID: {message.Channel?.Id.ToString() ?? "Unknow"}]
+
+                Use these guidelines to make your decision:
+
+                - Only respond to messages where you are directly mentioned or tagged.
+                - If the message is a question, you may respond.
+                - If you are unsure of the answer, do not respond.
+                - If the user only mentions you without a question, your decision should be TRUE.
+                - You can use the tools available to you [{string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName))}] but only if you decide to respond.
+        
+                Based on the guidelines above, your decision should be TRUE if you will respond to this message, otherwise it should be FALSE.
+                """;
     }
 }
