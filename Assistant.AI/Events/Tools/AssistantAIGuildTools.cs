@@ -1,5 +1,4 @@
 ﻿using DSharpPlus.Entities;
-using DSharpPlus.VoiceNext;
 using System.ComponentModel;
 
 namespace AssistantAI.Events {

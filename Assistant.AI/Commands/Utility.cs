@@ -1,9 +1,6 @@
 ﻿using AssistantAI.ContextChecks;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus.Commands;
-using DSharpPlus.Commands.Processors.SlashCommands;
-using DSharpPlus.Entities;
-using DSharpPlus.VoiceNext;
 using System.ComponentModel;
 
 namespace AssistantAI.Commands;

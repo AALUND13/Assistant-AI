@@ -12,7 +12,6 @@ using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
-using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -78,8 +77,6 @@ public static class ServiceManager {
         logger.Debug("Initializing Discord client services...");
         services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);
         logger.Info("Discord client initialized.");
-
-        services.AddVoiceNextExtension(new VoiceNextConfiguration());
 
         services.AddCommandsExtension(
             extension => {
