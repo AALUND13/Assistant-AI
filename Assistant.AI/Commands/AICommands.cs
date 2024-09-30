@@ -24,7 +24,7 @@ public class AICommands {
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
 
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).BlacklistStatus = AIResponsePermission.Blacklisted;
+        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).ResponsePermission = AIResponsePermission.Blacklisted;
 
         database.SaveDatabase();
 
@@ -43,7 +43,7 @@ public class AICommands {
 
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
 
-        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).BlacklistStatus = AIResponsePermission.None;
+        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).ResponsePermission = AIResponsePermission.None;
         database.SaveDatabase();
 
         return ctx.ResponeTryEphemeral($"Whitelisted {user.Mention}.", true);
@@ -56,13 +56,13 @@ public class AICommands {
     public static ValueTask IgnoreMe(CommandContext ctx, bool ignore = true) {
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
 
-        if(ignore && database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus == AIResponsePermission.Blacklisted)
+        if(ignore && database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).ResponsePermission == AIResponsePermission.Blacklisted)
             return ctx.ResponeTryEphemeral("You can't ignore yourself if you're blacklisted.", true);
 
         if(ignore)
-            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus = AIResponsePermission.Ignored;
+            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).ResponsePermission = AIResponsePermission.Ignored;
         else
-            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus = AIResponsePermission.None;
+            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).ResponsePermission = AIResponsePermission.None;
 
         database.SaveDatabase();
 

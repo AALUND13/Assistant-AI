@@ -72,7 +72,7 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
             || eventArgs.Channel.IsPrivate // Check if the channel is a direct message
             || eventArgs.Channel.IsNSFW // Check if the channel is NSFW
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
-            || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).BlacklistStatus != AIResponsePermission.None // Check if the user is blacklisted
+            || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted
             || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
             return;
 
