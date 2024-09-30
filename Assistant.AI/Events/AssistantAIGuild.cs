@@ -32,7 +32,7 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
     public Dictionary<ulong, List<ChatMessageData>> SerializedChatMessages => this.SerializeChatMessages();
 
     public void LoadMessagesFromDatabase() {
-        Dictionary<ulong, ChannelData> channelsData = databaseService.Data.ChannelData;
+        Dictionary<ulong, ChannelData> channelsData = databaseService.Data.Channels;
         foreach(ulong channelID in channelsData.Keys) {
             ChannelData channelData = channelsData[channelID];
 
@@ -42,10 +42,10 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
 
     public void SaveMessagesToDatabase() {
         foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData channelData = databaseService.Data.GetOrDefaultChannelData(channelID);
+            ChannelData channelData = databaseService.Data.GetOrDefaultChannel(channelID);
             channelData.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
 
-            databaseService.Data.ChannelData[channelID] = channelData;
+            databaseService.Data.Channels[channelID] = channelData;
         }
 
         databaseService.SaveDatabase();
@@ -72,7 +72,7 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
             || eventArgs.Channel.IsPrivate // Check if the channel is a direct message
             || eventArgs.Channel.IsNSFW // Check if the channel is NSFW
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
-            || databaseService.Data.GuildData.GetValueOrDefault(eventArgs.Guild.Id, new()).BlacklistedUsers.Any(blacklistedUser => blacklistedUser.userID == eventArgs.Author.Id) // Check if the author is blacklisted
+            || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).BlacklistStatus != AIResponsePermission.None // Check if the user is blacklisted
             || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
             return;
 

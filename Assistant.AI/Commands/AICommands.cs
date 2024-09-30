@@ -24,28 +24,26 @@ public class AICommands {
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
 
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        database.Data.GetOrDefaultGuildData(ctx.Guild!.Id);
+        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).BlacklistStatus = AIResponsePermission.Blacklisted;
 
-        database.Data.GuildData[ctx.Guild!.Id].BlacklistedUsers.Add((user.Id, BlacklistStatus.Blacklisted));
         database.SaveDatabase();
 
 
         return ctx.ResponeTryEphemeral($"Blacklisted {user.Mention}.", true);
     }
 
-    [Command("whitelist-user")]
+    [Command("unblacklist-user")]
     [Description("Remove a user from the blacklist.")]
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageMessages)]
     [RequireGuild()]
     [Cooldown(5)]
-    public static ValueTask WhitelistUser(CommandContext ctx, DiscordUser user) {
+    public static ValueTask UnBlacklistUser(CommandContext ctx, DiscordUser user) {
         if(user.IsBot)
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
 
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        database.Data.GetOrDefaultGuildData(ctx.Guild!.Id);
 
-        database.Data.GuildData[ctx.Guild!.Id].BlacklistedUsers.RemoveAll(user => user.userID == ctx.User.Id);
+        database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).BlacklistStatus = AIResponsePermission.None;
         database.SaveDatabase();
 
         return ctx.ResponeTryEphemeral($"Whitelisted {user.Mention}.", true);
@@ -57,15 +55,14 @@ public class AICommands {
     [Cooldown(5)]
     public static ValueTask IgnoreMe(CommandContext ctx, bool ignore = true) {
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        database.Data.GetOrDefaultGuildData(ctx.Guild!.Id);
 
-        if(ignore && database.Data.GuildData[ctx.Guild!.Id].BlacklistedUsers.Any(user => user.userID == ctx.User.Id))
+        if(ignore && database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus == AIResponsePermission.Blacklisted)
             return ctx.ResponeTryEphemeral("You can't ignore yourself if you're blacklisted.", true);
 
         if(ignore)
-            database.Data.GuildData[ctx.Guild!.Id].BlacklistedUsers.Add((ctx.User.Id, BlacklistStatus.Ingored));
+            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus = AIResponsePermission.Ignored;
         else
-            database.Data.GuildData[ctx.Guild!.Id].BlacklistedUsers.RemoveAll(user => user.userID == ctx.User.Id);
+            database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).BlacklistStatus = AIResponsePermission.None;
 
         database.SaveDatabase();
 

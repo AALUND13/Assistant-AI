@@ -2,46 +2,84 @@
 
 namespace AssistantAI.DataTypes;
 
-public enum BlacklistStatus {
+public enum AIResponsePermission {
+    None,
+    Ignored,
     Blacklisted,
-    Ingored
 }
 
-public record struct ChatMessageContentPartData(string Text, Uri ImageUri);
+public record struct ChatMessageContentPartData(string Text, Uri? ImageUri);
 public record struct ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
-
 public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
 
-public struct UserData() {
-    public Dictionary<string, long> CommandCooldowns = [];
+public class UserData {
+    public Dictionary<string, long> CommandCooldowns { get; set; }
+
+    public UserData() {
+        CommandCooldowns = [];
+    }
 }
 
-public struct ChannelData() {
-    public List<ChatMessageData> ChatMessages = [];
+public class ChannelData {
+    public List<ChatMessageData> ChatMessages { get; set; }
+
+    public ChannelData() {
+        ChatMessages = [];
+    }
 }
 
+public class GuildUserData {
+    public AIResponsePermission BlacklistStatus { get; set; }
 
-public struct GuildData() {
-    public List<(ulong userID, BlacklistStatus blacklistStatus)> BlacklistedUsers = [];
+    public GuildUserData() {
+        BlacklistStatus = AIResponsePermission.None;
+    }
 }
 
-public struct Data() {
-    public Dictionary<ulong, UserData> Users = [];
-    public Dictionary<ulong, GuildData> GuildData = [];
-    public Dictionary<ulong, ChannelData> ChannelData = [];
+public class GuildData {
+    public Dictionary<ulong, GuildUserData> GuildUsers { get; set; }
 
-    public readonly UserData GetOrDefaultUserData(ulong userID) {
-        Users.TryAdd(userID, new UserData());
+    public GuildData() {
+        GuildUsers = [];
+    }
+
+    public GuildUserData GetOrDefaultGuildUser(ulong userID) {
+        if(!GuildUsers.ContainsKey(userID)) {
+            GuildUsers[userID] = new GuildUserData();
+        }
+        return GuildUsers[userID];
+    }
+}
+
+public struct Data {
+    public Dictionary<ulong, UserData> Users;
+    public Dictionary<ulong, GuildData> Guilds;
+    public Dictionary<ulong, ChannelData> Channels;
+
+    public Data() {
+        Users = [];
+        Guilds = [];
+        Channels = [];
+    }
+
+    public UserData GetOrDefaultUser(ulong userID) {
+        if(!Users.ContainsKey(userID)) {
+            Users[userID] = new UserData();
+        }
         return Users[userID];
     }
 
-    public readonly ChannelData GetOrDefaultChannelData(ulong channelID) {
-        ChannelData.TryAdd(channelID, new ChannelData());
-        return ChannelData[channelID];
+    public ChannelData GetOrDefaultChannel(ulong channelID) {
+        if(!Channels.ContainsKey(channelID)) {
+            Channels[channelID] = new ChannelData();
+        }
+        return Channels[channelID];
     }
 
-    public readonly GuildData GetOrDefaultGuildData(ulong guildID) {
-        GuildData.TryAdd(guildID, new GuildData());
-        return GuildData[guildID];
+    public GuildData GetOrDefaultGuild(ulong guildID) {
+        if(!Guilds.ContainsKey(guildID)) {
+            Guilds[guildID] = new GuildData();
+        }
+        return Guilds[guildID];
     }
 }

@@ -17,7 +17,6 @@ namespace AssistantAI.Events {
             if(customActivity != null)
                 stringBuilder.Append($" | Custom Activity: {customActivity}");
 
-            
             return $"[{stringBuilder}]";
         }
     }
