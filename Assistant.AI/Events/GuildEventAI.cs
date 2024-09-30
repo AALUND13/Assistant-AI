@@ -17,6 +17,8 @@ public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
 // The main class for the AI event.
 public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
+    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
@@ -112,7 +114,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private async Task AddTypingTimerForChannel(DiscordChannel channel) {
         var channelTimer = new Timer(5000);
         channelTimer.Elapsed += async (sender, e) => {
-            await channel.TriggerTypingAsync();
+            try {
+                await channel.TriggerTypingAsync();
+            } catch {
+                logger.Error("Failed to trigger typing in channel {0}", channel.Id);
+            }
         };
 
         var channelTimerInfo = channelTypingTimer.GetOrAdd(channel.Id, new ChannelTimerInfo(0, channelTimer));

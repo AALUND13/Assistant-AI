@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations;
 namespace AssistantAI.Services;
 
 public readonly record struct Step([property: Required] string Content);
-public readonly record struct Reasoning([property: Required] Step[] Steps, [property: Required] string Conclusion);
+public readonly record struct Reasoning([property: Required] Step[] Steps, [property: Required] string Response);
 
 public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
@@ -73,7 +73,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         Reasoning reasoning = JsonConvert.DeserializeObject<Reasoning>(chatCompletion.ToString());
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Conclusion));
+                returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Response));
                 break;
             case ChatFinishReason.ToolCalls:
                 var assistantChatMessage = new AssistantChatMessage(chatCompletion);
