@@ -2,24 +2,24 @@
 using NLog;
 using OpenAI.Moderations;
 
-namespace AssistantAI.Services {
-    public class AIFilterService : IFilterService {
-        private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-        private readonly ModerationClient moderationClient;
+namespace AssistantAI.Services;
 
-        public AIFilterService(IConfigService config) {
-            moderationClient = new ModerationClient("omni-moderation-latest", config.Config.OPENAI_KEY);
-        }
+public class AIFilterService : IFilterService {
+    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+    private readonly ModerationClient moderationClient;
 
-        public async Task<string> FilterAsync(string message) {
-            bool flagged = (await moderationClient.ClassifyTextAsync(message)).Value.Flagged;
+    public AIFilterService(IConfigService config) {
+        moderationClient = new ModerationClient("omni-moderation-latest", config.Config.OPENAI_KEY);
+    }
 
-            if(flagged) {
-                logger.Info("Flagged message: {Message}", message);
-                return "**[Filter]**";
-            } else {
-                return message;
-            }
+    public async Task<string> FilterAsync(string message) {
+        bool flagged = (await moderationClient.ClassifyTextAsync(message)).Value.Flagged;
+
+        if(flagged) {
+            logger.Info("Flagged message: {Message}", message);
+            return "**[Filter]**";
+        } else {
+            return message;
         }
     }
 }

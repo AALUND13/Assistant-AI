@@ -1,5 +1,5 @@
-﻿namespace AssistantAI.Services.Interfaces {
-    public interface IFilterService {
-        public Task<string> FilterAsync(string message);
-    }
+﻿namespace AssistantAI.Services.Interfaces;
+
+public interface IFilterService {
+    public Task<string> FilterAsync(string message);
 }

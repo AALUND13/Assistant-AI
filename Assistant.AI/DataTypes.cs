@@ -13,35 +13,19 @@ public record struct ChatToolCallData(string Id, string FunctionName, string Fun
 public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
 
 public class UserData {
-    public Dictionary<string, long> CommandCooldowns { get; set; }
-
-    public UserData() {
-        CommandCooldowns = [];
-    }
+    public Dictionary<string, long> CommandCooldowns = [];
 }
 
 public class ChannelData {
-    public List<ChatMessageData> ChatMessages { get; set; }
-
-    public ChannelData() {
-        ChatMessages = [];
-    }
+    public List<ChatMessageData> ChatMessages = [];
 }
 
 public class GuildUserData {
-    public AIResponsePermission ResponsePermission { get; set; }
-
-    public GuildUserData() {
-        ResponsePermission = AIResponsePermission.None;
-    }
+    public AIResponsePermission ResponsePermission = AIResponsePermission.None;
 }
 
 public class GuildData {
-    public Dictionary<ulong, GuildUserData> GuildUsers { get; set; }
-
-    public GuildData() {
-        GuildUsers = [];
-    }
+    public Dictionary<ulong, GuildUserData> GuildUsers = [];
 
     public GuildUserData GetOrDefaultGuildUser(ulong userID) {
         if(!GuildUsers.ContainsKey(userID)) {
@@ -51,16 +35,10 @@ public class GuildData {
     }
 }
 
-public struct Data {
-    public Dictionary<ulong, UserData> Users;
-    public Dictionary<ulong, GuildData> Guilds;
-    public Dictionary<ulong, ChannelData> Channels;
-
-    public Data() {
-        Users = [];
-        Guilds = [];
-        Channels = [];
-    }
+public class Data {
+    public Dictionary<ulong, UserData> Users = [];
+    public Dictionary<ulong, GuildData> Guilds = [];
+    public Dictionary<ulong, ChannelData> Channels = [];
 
     public UserData GetOrDefaultUser(ulong userID) {
         if(!Users.ContainsKey(userID)) {
