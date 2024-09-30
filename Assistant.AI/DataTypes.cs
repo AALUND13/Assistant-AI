@@ -29,10 +29,10 @@ public class ChannelData {
 }
 
 public class GuildUserData {
-    public AIResponsePermission BlacklistStatus { get; set; }
+    public AIResponsePermission ResponsePermission { get; set; }
 
     public GuildUserData() {
-        BlacklistStatus = AIResponsePermission.None;
+        ResponsePermission = AIResponsePermission.None;
     }
 }
 
