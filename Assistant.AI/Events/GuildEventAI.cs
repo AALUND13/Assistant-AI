@@ -39,6 +39,10 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
             .WithToolFunction(GetUserInfo)
+            .WithToolFunction(AddOrOverwriteGuildMemory)
+            .WithToolFunction(AddOrOverwriteUserMemory)
+            .WithToolFunction(RemoveGuildMemory)
+            .WithToolFunction(RemoveUserMemory)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
@@ -59,11 +63,18 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
         HandleChatMessage(userChatMessage, eventArgs.Channel.Id);
 
-        bool shouldReply = await aiDecisionService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message)));
+        SystemChatMessage userMemory = GenerateUserMemorySystemMessage(eventArgs.Author.Id);
+        SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
+
+        List<ChatMessage> messages = ChatMessages[eventArgs.Channel.Id];
+        messages.Insert(0, userMemory);
+        messages.Insert(0, guildMemory);
+
+        bool shouldReply = await aiDecisionService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message)));
         if(shouldReply) {
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(ChatMessages[eventArgs.Channel.Id], ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions);
+            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions);
             foreach(var message in assistantChatMessages) {
                 var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
                 if(textPartIndex == -1) continue;
