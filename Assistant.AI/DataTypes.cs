@@ -14,6 +14,7 @@ public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageConte
 
 public class UserData {
     public Dictionary<string, long> CommandCooldowns = [];
+    public Dictionary<string, string> UserMemory = [];
 }
 
 public class ChannelData {
@@ -26,6 +27,7 @@ public class GuildUserData {
 
 public class GuildData {
     public Dictionary<ulong, GuildUserData> GuildUsers = [];
+    public Dictionary<string, string> GuildMemory = [];
 
     public GuildUserData GetOrDefaultGuildUser(ulong userID) {
         if(!GuildUsers.ContainsKey(userID)) {

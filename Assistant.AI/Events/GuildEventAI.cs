@@ -15,7 +15,8 @@ namespace AssistantAI.Events;
 
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
-public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, IChannelChatMessages {
+// The main class for the AI event.
+public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
@@ -28,30 +29,7 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
 
     private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
-    public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = [];
-    public Dictionary<ulong, List<ChatMessageData>> SerializedChatMessages => this.SerializeChatMessages();
-
-    public void LoadMessagesFromDatabase() {
-        Dictionary<ulong, ChannelData> channelsData = databaseService.Data.Channels;
-        foreach(ulong channelID in channelsData.Keys) {
-            ChannelData channelData = channelsData[channelID];
-
-            ChatMessages.Add(channelID, channelData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
-        }
-    }
-
-    public void SaveMessagesToDatabase() {
-        foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData channelData = databaseService.Data.GetOrDefaultChannel(channelID);
-            channelData.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
-
-            databaseService.Data.Channels[channelID] = channelData;
-        }
-
-        databaseService.SaveDatabase();
-    }
-
-    public AssistantAIGuild(IServiceProvider serviceProvider) {
+    public GuildEvent(IServiceProvider serviceProvider) {
         aiResponseService = serviceProvider.GetRequiredService<IAiResponseToolService<List<ChatMessage>>>();
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
         databaseService = serviceProvider.GetRequiredService<IDatabaseService<Data>>();
@@ -157,18 +135,6 @@ public partial class AssistantAIGuild : IEventHandler<MessageCreatedEventArgs>, 
         chatMessageContentParts.Add(ChatMessageContentPart.CreateTextPart($"[{stringBuilder}] {discordMessage.Content}"));
 
         return chatMessageContentParts;
-    }
-
-    public void HandleChatMessage(ChatMessage chatMessage, ulong channelID) {
-        if(!ChatMessages.ContainsKey(channelID)) {
-            ChatMessages[channelID] = new List<ChatMessage>();
-        }
-
-        ChatMessages[channelID].Add(chatMessage);
-
-        while(ChatMessages[channelID].Count > 50) {
-            ChatMessages[channelID].RemoveAt(0);
-        }
     }
 
     private string GenerateSystemPrompt(DiscordMessage message) {

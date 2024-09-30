@@ -4,7 +4,8 @@ using System.Text;
 
 namespace AssistantAI.Events;
 
-public partial class AssistantAIGuild {
+// All the tools methods of the GuildEvent class.
+public partial class GuildEvent {
     [Description("Get information about a user.")]
     string GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
         DiscordUser user = client.GetUserAsync(userID).Result
