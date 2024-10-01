@@ -15,6 +15,8 @@ public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageConte
 public class UserData {
     public Dictionary<string, long> CommandCooldowns = [];
     public Dictionary<string, string> UserMemory = [];
+
+    public AIResponsePermission ResponsePermission = AIResponsePermission.None;
 }
 
 public class ChannelData {

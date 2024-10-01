@@ -57,10 +57,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             || eventArgs.Channel.IsNSFW // Check if the channel is NSFW
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
             || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted
+            || databaseService.Data.GetOrDefaultUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted (This is a global blacklist)
             || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
             return;
 
-        ChatMessages.TryAdd(eventArgs.Channel.Id, new List<ChatMessage>());
+        ChatMessages.TryAdd(eventArgs.Channel.Id, []);
 
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
         HandleChatMessage(userChatMessage, eventArgs.Channel.Id);
@@ -117,7 +118,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             try {
                 await channel.TriggerTypingAsync();
             } catch {
-                logger.Error("Failed to trigger typing in channel {0}", channel.Id);
+                logger.Warn("Failed to trigger typing in channel {0}", channel.Id);
             }
         };
 

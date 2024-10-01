@@ -25,7 +25,7 @@ public partial class GuildEvent {
     [Description("Add or overwrite a key in the user memory.")]
     string AddOrOverwriteUserMemory([Description("The user ID to get information about.")] ulong userID, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(!UserMemory.ContainsKey(userID))
-            UserMemory[userID] = new Dictionary<string, string>();
+            UserMemory[userID] = [];
 
         UserMemory[userID][key] = value;
         return $"User memory key {key} has been added or overwritten with value {value}";
@@ -34,7 +34,7 @@ public partial class GuildEvent {
     [Description("Add or overwrite a key in the guild memory.")]
     string AddOrOverwriteGuildMemory([Description("The user ID to get information about.")] ulong guildID, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(!GuildMemory.ContainsKey(guildID))
-            GuildMemory[guildID] = new Dictionary<string, string>();
+            GuildMemory[guildID] = [];
 
         GuildMemory[guildID][key] = value;
         return $"Guild memory key {key} has been added or overwritten with value {value}";
@@ -43,7 +43,7 @@ public partial class GuildEvent {
     [Description("Remove a key from the user memory.")]
     string RemoveUserMemory([Description("The user ID to get information about.")] ulong userID, [Description("The key to remove.")] string key) {
         if(!UserMemory.ContainsKey(userID))
-            UserMemory[userID] = new Dictionary<string, string>();
+            UserMemory[userID] = [];
 
         if(UserMemory[userID].Remove(key))
             return $"User memory key {key} has been removed";
@@ -53,7 +53,7 @@ public partial class GuildEvent {
     [Description("Remove a key from the guild memory.")]
     string RemoveGuildMemory([Description("The user ID to get information about.")] ulong guildID, [Description("The key to remove.")] string key) {
         if(!GuildMemory.ContainsKey(guildID))
-            GuildMemory[guildID] = new Dictionary<string, string>();
+            GuildMemory[guildID] = [];
 
         if(GuildMemory[guildID].Remove(key))
             return $"Guild memory key {key} has been removed";

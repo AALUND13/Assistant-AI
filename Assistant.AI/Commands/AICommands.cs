@@ -20,14 +20,15 @@ public class AICommands {
     [RequireGuild()]
     [Cooldown(5)]
     public static ValueTask BlacklistUser(CommandContext ctx, DiscordUser user) {
+        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+
         if(user.IsBot)
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+        else if(database.Data.GetOrDefaultUser(user.Id).ResponsePermission == AIResponsePermission.Blacklisted)
+            return ctx.ResponeTryEphemeral("You can't blacklist a user that is globally blacklisted.", true);
 
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
         database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).ResponsePermission = AIResponsePermission.Blacklisted;
-
         database.SaveDatabase();
-
 
         return ctx.ResponeTryEphemeral($"Blacklisted {user.Mention}.", true);
     }
@@ -38,10 +39,12 @@ public class AICommands {
     [RequireGuild()]
     [Cooldown(5)]
     public static ValueTask UnBlacklistUser(CommandContext ctx, DiscordUser user) {
+        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+
         if(user.IsBot)
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
-
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+        else if(database.Data.GetOrDefaultUser(user.Id).ResponsePermission == AIResponsePermission.Blacklisted)
+            return ctx.ResponeTryEphemeral("You can't unblacklist a user that is globally blacklisted.", true);
 
         database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(user.Id).ResponsePermission = AIResponsePermission.None;
         database.SaveDatabase();
@@ -57,7 +60,9 @@ public class AICommands {
         IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
 
         if(ignore && database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).ResponsePermission == AIResponsePermission.Blacklisted)
-            return ctx.ResponeTryEphemeral("You can't ignore yourself if you're blacklisted.", true);
+            return ctx.ResponeTryEphemeral("You can't ignore yourself if you are blacklisted.", true);
+        else if(database.Data.GetOrDefaultUser(ctx.User.Id).ResponsePermission == AIResponsePermission.Blacklisted)
+            return ctx.ResponeTryEphemeral("You can't ignore yourself if you are globally blacklisted.", true);
 
         if(ignore)
             database.Data.GetOrDefaultGuild(ctx.Guild!.Id).GetOrDefaultGuildUser(ctx.User.Id).ResponsePermission = AIResponsePermission.Ignored;
@@ -68,4 +73,20 @@ public class AICommands {
 
         return ctx.ResponeTryEphemeral($"AI will {(ignore ? "now" : "no longer")} ignored you.", true);
     }
+
+    [Command("global-blacklist-user")]
+    [Description("Globally blacklist or unblacklist a user.")]
+    [RequireApplicationOwner()]
+    public static ValueTask GlobalBlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
+        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+
+        if(user.IsBot)
+            return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+
+        database.Data.GetOrDefaultUser(user.Id).ResponsePermission = blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None;
+        database.SaveDatabase();
+
+        return ctx.ResponeTryEphemeral($"Globally {(blacklisted ? "blacklisted" : "unblacklisted")} {user.Mention}.", true);
+    }
+
 }
