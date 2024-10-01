@@ -16,7 +16,7 @@
 	
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
-    <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02361" />
+    <PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02364" />
     <PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02361" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
