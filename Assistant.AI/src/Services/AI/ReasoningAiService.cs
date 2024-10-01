@@ -70,10 +70,10 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         var returnMessages = new List<ChatMessage>();
         var messages = new List<ChatMessage>(additionalMessages);
 
-        Reasoning reasoning = JsonConvert.DeserializeObject<Reasoning>(chatCompletion.ToString());
+        Reasoning? reasoning = chatCompletion.Content.Count > 0 ? JsonConvert.DeserializeObject<Reasoning>(chatCompletion.Content[0].Text) : null;
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning.Response));
+                returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning?.Response));
                 break;
             case ChatFinishReason.ToolCalls:
                 var assistantChatMessage = new AssistantChatMessage(chatCompletion);
