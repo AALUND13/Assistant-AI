@@ -21,7 +21,7 @@ public static class ChatMessageExtensions {
             ContentParts = chatMessage.Content.Select(ctx => new ChatMessageContentPartData(ctx.Text, ctx.ImageUri)).ToList(),
 
             ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
-                .Select(toolCall => new ChatToolCallData(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments)).ToList() : null,
+                .Select(toolCall => new ChatToolCallData(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString())).ToList() : null,
 
             ToolCallId = chatMessage is ToolChatMessage ToolChatMessage ? ToolChatMessage.ToolCallId : null,
         };
@@ -43,7 +43,7 @@ public static class ChatMessageExtensions {
         }
 
         List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
-            .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.Id, toolCalls.FunctionName, toolCalls.FunctionArguments))?
+            .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.Id, toolCalls.FunctionName, BinaryData.FromString(toolCalls.FunctionArguments)))?
             .ToList();
 
         ChatMessage chatMessage = chatMessageData.Role switch {

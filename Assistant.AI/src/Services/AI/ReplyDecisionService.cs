@@ -50,7 +50,7 @@ public class ReplyDecisionService : IAiResponseService<bool> {
     private Decision HandleRespone(ChatCompletion chatCompletion) {
         switch(chatCompletion.FinishReason) {
             case ChatFinishReason.Stop:
-                Decision decision = JsonConvert.DeserializeObject<Decision>(chatCompletion.ToString());
+                Decision decision = JsonConvert.DeserializeObject<Decision>(chatCompletion.Content[0].Text);
 
                 return decision;
             default:

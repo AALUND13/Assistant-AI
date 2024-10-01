@@ -46,7 +46,7 @@ public class ToolsFunctions {
         if(method == null)
             throw new ArgumentException($"No tool function with the name '{toolCall.FunctionName}' was found.");
 
-        JObject arguments = JObject.Parse(toolCall.FunctionArguments);
+        JObject arguments = JObject.Parse(toolCall.FunctionArguments.ToString());
         ParameterInfo[] parameters = method.GetMethodInfo().GetParameters();
 
         // Convert the json arguments to the corresponding parameter types
