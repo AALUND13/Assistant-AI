@@ -11,7 +11,7 @@ public readonly record struct Decision([property: Required] string Explanation, 
 
 public class ReplyDecisionService : IAiResponseService<bool> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-    private static string ReasoningJsonSchema => typeof(Decision).GetJsonSchemaFromType(false).ToString();
+    private static string ReasoningJsonSchema => typeof(Decision).GetJsonSchemaFromType(new SchemaOptions() { AddDefaultDescription = false }).ToString();
 
     private readonly ChatClient openAIClient;
 

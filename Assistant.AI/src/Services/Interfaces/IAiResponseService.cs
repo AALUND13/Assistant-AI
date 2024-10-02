@@ -7,6 +7,6 @@ public interface IAiResponseService<T> {
     Task<T> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage);
 }
 
-public interface IAiResponseToolService<T> : IAiResponseService<T> {
-    Task<T> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions toolsFunctions);
+public interface IAiResponseToolService<T> {
+    Task<T> PromptAsync<Option>(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions<Option> toolsFunctions, Option option);
 }

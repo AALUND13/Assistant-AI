@@ -7,29 +7,39 @@ using System.Reflection;
 
 namespace AssistantAI.Utilities;
 
-public class ToolsFunctionsBuilder {
+public class ToolsFunctionsBuilder<T> {
     public readonly Dictionary<Delegate, JSchema> ToolFunctions = new Dictionary<Delegate, JSchema>();
-    public ToolsFunctionsBuilder WithToolFunction(Delegate delegateMethod) {
+    public ToolsFunctionsBuilder<T> WithToolFunction(Delegate delegateMethod) {
         if(ToolFunctions.ContainsKey(delegateMethod))
             return this;
 
-        JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod();
+        SchemaOptions schemaOptions = new SchemaOptions {
+            AddDefaultDescription = true,
+            IgnoredTypes = new List<Type> { typeof(T) }
+        };
+
+        JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod(schemaOptions);
         ToolFunctions.Add(delegateMethod, methodJsonSchema);
 
         return this;
     }
 }
 
-public class ToolsFunctions {
-    private readonly ToolsFunctionsBuilder builder;
+public class ToolsFunctions<T> {
+    private readonly ToolsFunctionsBuilder<T> builder;
     public List<ChatTool> ChatTools { get => builder.ToolFunctions.Keys.Select(GetToolFunctions).ToList(); }
 
-    public ToolsFunctions(ToolsFunctionsBuilder builder) {
+    public ToolsFunctions(ToolsFunctionsBuilder<T> builder) {
         this.builder = builder;
     }
 
     public ChatTool GetToolFunctions(Delegate delegateMethod) {
-        JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod();
+        SchemaOptions schemaOptions = new SchemaOptions {
+            AddDefaultDescription = true,
+            IgnoredTypes = new List<Type> { typeof(T) }
+        };
+
+        JSchema methodJsonSchema = delegateMethod.GetMethodInfo().GetJsonSchemaFromMethod(schemaOptions);
         string methodDescription = delegateMethod.GetMethodInfo().GetCustomAttribute<DescriptionAttribute>()?.Description ?? "No description provided.";
 
         return ChatTool.CreateFunctionTool(
@@ -39,8 +49,7 @@ public class ToolsFunctions {
         );
     }
 
-    public object? CallToolFunction(ChatToolCall toolCall) {
-        // Find the method in the ToolFunctions dictionary based on the function name
+    public object? CallToolFunction(ChatToolCall toolCall, T option) {
         Delegate? method = builder.ToolFunctions.Keys.FirstOrDefault(m => m.GetMethodInfo().Name == toolCall.FunctionName);
 
         if(method == null)
@@ -49,8 +58,19 @@ public class ToolsFunctions {
         JObject arguments = JObject.Parse(toolCall.FunctionArguments.ToString());
         ParameterInfo[] parameters = method.GetMethodInfo().GetParameters();
 
-        // Convert the json arguments to the corresponding parameter types
-        object?[] args = arguments.Children().Select(a => a.First?.ToObject(parameters.First(p => p.Name == a.Path).ParameterType)).ToArray();
+        object?[] args = new object?[parameters.Length];
+
+        foreach(var param in parameters) {
+            JToken? argToken = arguments[param.Name!];
+
+            if(argToken != null) {
+                args[Array.IndexOf(parameters, param)] = argToken.ToObject(param.ParameterType);
+            }
+
+            if(typeof(T).IsAssignableFrom(param.ParameterType)) {
+                args[Array.IndexOf(parameters, param)] = option;
+            }
+        }
 
         try {
             return method.DynamicInvoke(args);

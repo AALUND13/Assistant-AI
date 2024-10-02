@@ -13,6 +13,7 @@ using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events;
 
+public record ToolTrigger(DiscordGuild? Guild, DiscordChannel? Channel, DiscordUser? User, string? Message);
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
 // The main class for the AI event.
@@ -27,7 +28,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly List<IFilterService> filterServices;
 
     private readonly DiscordClient client;
-    private readonly ToolsFunctions toolsFunctions;
+    private readonly ToolsFunctions<ToolTrigger> toolsFunctions;
 
     private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
@@ -39,7 +40,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         filterServices = serviceProvider.GetServices<IFilterService>().ToList();
 
-        toolsFunctions = new ToolsFunctions(new ToolsFunctionsBuilder()
+        toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
             .WithToolFunction(AddOrOverwriteGuildMemory)
             .WithToolFunction(AddOrOverwriteUserMemory)
@@ -77,7 +78,9 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         if(shouldReply) {
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions);
+            ToolTrigger toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
+
+            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions, toolTrigger);
             foreach(var message in assistantChatMessages) {
                 var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
                 if(textPartIndex == -1) continue;

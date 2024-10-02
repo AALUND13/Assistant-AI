@@ -1,9 +1,15 @@
-﻿using Newtonsoft.Json.Schema;
+﻿using AssistantAI.Utilities.Attributes;
+using Newtonsoft.Json.Schema;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace AssistantAI.Utilities.Extension;
+
+public class SchemaOptions {
+    public bool AddDefaultDescription { get; set; } = true;
+    public List<Type> IgnoredTypes { get; set; } = new List<Type>();
+}
 
 public static class ReflectionExtensions {
     /// <summary>
@@ -11,16 +17,23 @@ public static class ReflectionExtensions {
     /// </summary>
     /// <param name="type">The .NET type to generate the schema from.</param>
     /// <returns>A <see cref="JSchema"/> object representing the JSON schema of the type.</returns>
-    public static JSchema GetJsonSchemaFromType(this Type type, bool addDefaultDescription = true) {
+    public static JSchema GetJsonSchemaFromType(this Type type, SchemaOptions? schemaOptions = null) {
+        schemaOptions ??= new SchemaOptions();
+
         var schema = new JSchema {
             Type = JSchemaType.Object,
-            Description = type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (addDefaultDescription ? "No description provided." : null),
+            Description = GetDescription(type, schemaOptions),
             AllowAdditionalProperties = false
         };
 
         foreach(PropertyInfo property in type.GetProperties()) {
+            if(property.GetCustomAttribute<IgnoreAttribute>() != null)
+                continue;
+            else if(schemaOptions.IgnoredTypes.Contains(property.PropertyType))
+                continue;
+
             var propertySchema = new JSchema {
-                Description = property.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (addDefaultDescription ? "No description provided." : null),
+                Description = GetDescription(type, schemaOptions),
                 Type = GetSchemaTypeFromType(property.PropertyType)
             };
 
@@ -28,8 +41,8 @@ public static class ReflectionExtensions {
             if(propertySchema.Type == JSchemaType.Object) {
                 propertySchema = GetJsonSchemaFromType(property.PropertyType);
                 propertySchema.AllowAdditionalProperties = false;
-            } else if (propertySchema.Type == JSchemaType.Array) {
-                propertySchema.Items.Add(GetJsonSchemaFromType(property.PropertyType.GetElementType()!, addDefaultDescription));
+            } else if(propertySchema.Type == JSchemaType.Array) {
+                propertySchema.Items.Add(GetJsonSchemaFromType(property.PropertyType.GetElementType()!, schemaOptions));
             }
             schema.Properties.Add(property.Name, propertySchema);
             if(property.GetCustomAttribute<RequiredAttribute>() != null) {
@@ -46,11 +59,11 @@ public static class ReflectionExtensions {
     /// </summary>
     /// <param name="parameter">The parameter to generate the schema from.</param>
     /// <returns>A <see cref="JSchema"/> object representing the JSON schema of the parameter.</returns>
-    public static JSchema GetJsonSchemaFromParameter(this ParameterInfo parameter) {
+    public static JSchema GetJsonSchemaFromParameter(this ParameterInfo parameter, SchemaOptions schemaOptions) {
         var jSchemaType = GetSchemaTypeFromType(parameter.ParameterType);
 
         var schema = new JSchema {
-            Description = parameter.GetCustomAttribute<DescriptionAttribute>()?.Description ?? "No description provided.",
+            Description = GetDescription(parameter, schemaOptions),
             Type = jSchemaType
         };
 
@@ -66,14 +79,19 @@ public static class ReflectionExtensions {
     /// </summary>
     /// <param name="method">The method to generate the schema from.</param>
     /// <returns>A <see cref="JSchema"/> object representing the JSON schema of the method.</returns>
-    public static JSchema GetJsonSchemaFromMethod(this MethodInfo method) {
+    public static JSchema GetJsonSchemaFromMethod(this MethodInfo method, SchemaOptions schemaOptions) {
         var schema = new JSchema {
             Type = JSchemaType.Object,
-            Description = method.GetCustomAttribute<DescriptionAttribute>()?.Description
+            Description = GetDescription(method, schemaOptions),
         };
 
         foreach(ParameterInfo parameter in method.GetParameters()) {
-            var parameterSchema = GetJsonSchemaFromParameter(parameter);
+            if(parameter.GetCustomAttribute<IgnoreAttribute>() != null)
+                continue;
+            else if(schemaOptions.IgnoredTypes.Contains(parameter.ParameterType))
+                continue;
+
+            var parameterSchema = GetJsonSchemaFromParameter(parameter, schemaOptions);
 
             schema.Properties.Add(parameter.Name!, parameterSchema);
             if(!parameter.IsOptional) {
@@ -116,4 +134,15 @@ public static class ReflectionExtensions {
 
         throw new NotSupportedException($"Type {type.Name} is not supported.");
     }
+
+
+
+    private static string? GetDescription(MemberInfo member, SchemaOptions schemaOptions) {
+        return member.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (schemaOptions.AddDefaultDescription ? "No description provided." : null);
+    }
+
+    private static string? GetDescription(ParameterInfo member, SchemaOptions schemaOptions) {
+        return member.GetCustomAttribute<DescriptionAttribute>()?.Description ?? (schemaOptions.AddDefaultDescription ? "No description provided." : null);
+    }
+
 }
