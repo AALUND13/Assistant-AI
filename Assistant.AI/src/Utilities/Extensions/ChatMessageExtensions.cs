@@ -1,5 +1,4 @@
 ﻿using AssistantAI.DataTypes;
-using NLog;
 using OpenAI.Chat;
 using System.Reflection;
 
@@ -57,11 +56,12 @@ public static class ChatMessageExtensions {
 
         return chatMessage;
     }
-    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
-        var assistantChatMessage = new AssistantChatMessage(toolCalls ?? new List<ChatToolCall>());
-        if(content != null)
-            assistantChatMessage.Content.Add(ChatMessageContentPart.CreateTextPart(content));
 
-        return assistantChatMessage;
+    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
+        if(toolCalls != null && toolCalls.Any()) {
+            return ChatMessage.CreateAssistantMessage(toolCalls);
+        } else {
+            return ChatMessage.CreateAssistantMessage(content);
+        }
     }
 }
