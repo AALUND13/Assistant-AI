@@ -1,4 +1,4 @@
-﻿using AssistantAI.Utilities.Attributes;
+﻿using AssistantAI.Attributes;
 using Newtonsoft.Json.Schema;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;

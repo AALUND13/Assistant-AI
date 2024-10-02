@@ -1,4 +1,5 @@
 ﻿using AssistantAI.DataTypes;
+using AssistantAI.Services;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
@@ -59,7 +60,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
             || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted
             || databaseService.Data.GetOrDefaultUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted (This is a global blacklist)
-            || eventArgs.Message.Content.StartsWith("a!")) // Check if the message is a prefix command
+            || eventArgs.Message.Content.StartsWith(ServiceManager.PREFIX)) // Check if the message is a prefix command
             return;
 
         ChatMessages.TryAdd(eventArgs.Channel.Id, []);

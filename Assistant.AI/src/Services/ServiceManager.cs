@@ -23,11 +23,11 @@ using System.Text;
 namespace AssistantAI.Services;
 
 public static class ServiceManager {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-
-    private readonly static IServiceCollection services = new ServiceCollection();
+    public const string PREFIX = "a!";
     public static IServiceProvider? ServiceProvider { get; private set; }
 
+    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+    private readonly static IServiceCollection services = new ServiceCollection();
 
     public static void InitializeServices() {
         ConfigureServices();
@@ -85,7 +85,7 @@ public static class ServiceManager {
 
                 SlashCommandProcessor slashCommandProcessor = new(new());
                 TextCommandProcessor textCommandProcessor = new(new() {
-                    PrefixResolver = new DefaultPrefixResolver(false, "a!").ResolvePrefixAsync
+                    PrefixResolver = new DefaultPrefixResolver(false, PREFIX).ResolvePrefixAsync
                 });
 
                 extension.CommandErrored += CommandErrorHandler;
