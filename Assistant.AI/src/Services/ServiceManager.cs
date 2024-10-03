@@ -1,4 +1,5 @@
-﻿using AssistantAI.ContextChecks;
+﻿using AssistantAI.Commands.Parsing;
+using AssistantAI.ContextChecks;
 using AssistantAI.DataTypes;
 using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
@@ -23,7 +24,6 @@ using System.Text;
 namespace AssistantAI.Services;
 
 public static class ServiceManager {
-    public const string PREFIX = "a!";
     public static IServiceProvider? ServiceProvider { get; private set; }
 
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
@@ -85,7 +85,7 @@ public static class ServiceManager {
 
                 SlashCommandProcessor slashCommandProcessor = new(new());
                 TextCommandProcessor textCommandProcessor = new(new() {
-                    PrefixResolver = new DefaultPrefixResolver(false, PREFIX).ResolvePrefixAsync
+                    PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
                 });
 
                 extension.CommandErrored += CommandErrorHandler;

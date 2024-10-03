@@ -12,6 +12,12 @@ public record struct ChatMessageContentPartData(string Text, Uri? ImageUri);
 public record struct ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
 public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
 
+
+public class GuildOptions {
+    public bool Enabled = true;
+    public string Prefix = "a!";
+}
+
 public class UserData {
     public Dictionary<string, long> CommandCooldowns = [];
     public Dictionary<string, string> UserMemory = [];
@@ -30,6 +36,7 @@ public class GuildUserData {
 public class GuildData {
     public Dictionary<ulong, GuildUserData> GuildUsers = [];
     public Dictionary<string, string> GuildMemory = [];
+    public GuildOptions Options = new();
 
     public GuildUserData GetOrDefaultGuildUser(ulong userID) {
         if(!GuildUsers.ContainsKey(userID)) {

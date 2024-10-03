@@ -5,7 +5,7 @@ using System.ComponentModel;
 
 namespace AssistantAI.Commands;
 
-public class Utility {
+public class UtilityCommands {
     [Command("ping")]
     [Description("Get the bot's latency.")]
     [Cooldown(5)]
