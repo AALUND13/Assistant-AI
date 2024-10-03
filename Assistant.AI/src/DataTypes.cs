@@ -1,4 +1,6 @@
-﻿using OpenAI.Chat;
+﻿using Microsoft.EntityFrameworkCore;
+using OpenAI.Chat;
+using System.ComponentModel.DataAnnotations;
 
 namespace AssistantAI.DataTypes;
 
@@ -10,68 +12,94 @@ public enum AIResponsePermission {
 
 
 
-public record ChatMessageContentPartData(string Text);
-public record ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
-public record ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
+public class ChatMessageContentPartData {
+    public int Id { get; set; } // Primary key for SQLite
 
+    public string Text { get; set; }
 
+    public ChatMessageContentPartData(string text) {
+        Text = text;
+    }
+}
+
+public class ChatToolCallData {
+    public int Id { get; set; } // Primary key for SQLite
+
+    public string ToolID { get; set; }
+    public string FunctionName { get; set; }
+    public string FunctionArguments { get; set; }
+
+    public ChatToolCallData(string toolID, string functionName, string functionArguments) {
+        ToolID = toolID;
+        FunctionName = functionName;
+        FunctionArguments = functionArguments;
+    }
+}
+
+public class ChatMessageData {
+    public int Id { get; set; } // Primary key for SQLite
+
+    public ChatMessageRole Role { get; set; }
+    public List<ChatMessageContentPartData> ContentParts { get; set; }
+    public List<ChatToolCallData>? ToolCalls { get; set; }
+    public string? ToolCallId { get; set; }
+
+    public ChatMessageData(ChatMessageRole role, List<ChatMessageContentPartData> contentParts, List<ChatToolCallData>? toolCalls, string? toolCallId) {
+        Role = role;
+        ContentParts = contentParts;
+        ToolCalls = toolCalls;
+        ToolCallId = toolCallId;
+    }
+}
+
+// User data
+public class MemoryItem {
+    public int Id { get; set; } // Primary key for SQLite
+
+    public string Key { get; set; }
+    public string Value { get; set; }
+
+    public int UserDataId { get; set; } // Foreign key for the UserData relationship
+    public UserData UserData { get; set; } // Navigation property
+
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public MemoryItem(string key, string value) {
+        Key = key;
+        Value = value;
+    }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+}
+
+public class UserData {
+    public long Id { get; set; } // Primary key for SQLite
+
+    public List<ChatMessageData> ChatMessages { get; set; } = [];
+    public List<MemoryItem> Memory { get; set; } = [];
+
+    public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
+}
+
+// Guild data
+
+public class GuildUserData {
+    public long Id { get; set; } // Primary key for SQLite
+
+    public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
+    public GuildOptions Options { get; set; } = new();
+
+    public int GuildDataId { get; set; } // Foreign key for the GuildData relationship
+    public GuildData GuildData { get; set; } // Navigation property
+}
 
 public class GuildOptions {
     public bool Enabled = true;
     public string Prefix = "a!";
 }
 
-public class UserData {
-    public Dictionary<string, long> CommandCooldowns = [];
-    public Dictionary<string, string> UserMemory = [];
-
-    public AIResponsePermission ResponsePermission = AIResponsePermission.None;
-}
-
-public class ChannelData {
-    public List<ChatMessageData> ChatMessages = [];
-}
-
-public class GuildUserData {
-    public AIResponsePermission ResponsePermission = AIResponsePermission.None;
-}
-
 public class GuildData {
-    public Dictionary<ulong, GuildUserData> GuildUsers = [];
-    public Dictionary<string, string> GuildMemory = [];
-    public GuildOptions Options = new();
+    public long GuildId { get; set; } // Primary key for SQLite
 
-    public GuildUserData GetOrDefaultGuildUser(ulong userID) {
-        if(!GuildUsers.ContainsKey(userID)) {
-            GuildUsers[userID] = new GuildUserData();
-        }
-        return GuildUsers[userID];
-    }
-}
-
-public class Data {
-    public Dictionary<ulong, UserData> Users = [];
-    public Dictionary<ulong, GuildData> Guilds = [];
-    public Dictionary<ulong, ChannelData> Channels = [];
-
-    public UserData GetOrDefaultUser(ulong userID) {
-        if(!Users.ContainsKey(userID)) {
-            Users[userID] = new UserData();
-        }
-        return Users[userID];
-    }
-
-    public ChannelData GetOrDefaultChannel(ulong channelID) {
-        if(!Channels.ContainsKey(channelID)) {
-            Channels[channelID] = new ChannelData();
-        }
-        return Channels[channelID];
-    }
-
-    public GuildData GetOrDefaultGuild(ulong guildID) {
-        if(!Guilds.ContainsKey(guildID)) {
-            Guilds[guildID] = new GuildData();
-        }
-        return Guilds[guildID];
-    }
+    public List<GuildUserData> GuildUsers { get; set; } = [];
+    public List<MemoryItem> GuildMemory { get; set; } = [];
+    public GuildOptions Options { get; set; } = new();
 }
