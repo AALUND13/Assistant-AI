@@ -32,7 +32,9 @@ public class GuildPrefixResolver : IPrefixResolver {
             IDatabaseService<Data> databaseService = ServiceManager.GetService<IDatabaseService<Data>>();
             GuildData guildData = databaseService.Data.GetOrDefaultGuild(message.Channel.Guild.Id);
 
-            if(message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)) {
+            if(string.IsNullOrWhiteSpace(guildData.Options.Prefix)) {
+                return ValueTask.FromResult(-1);
+            } else if(message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)) {
                 return ValueTask.FromResult(guildData.Options.Prefix.Length);
             }
         }

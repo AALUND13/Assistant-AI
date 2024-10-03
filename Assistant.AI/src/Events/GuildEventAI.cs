@@ -53,15 +53,27 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         LoadMessagesFromDatabase();
     }
 
+    private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
+        var guildData = databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id);
+        var userData = databaseService.Data.GetOrDefaultUser(eventArgs.Author.Id);
+
+        return eventArgs.Author.IsBot
+
+            || !guildData.Options.Enabled
+
+            || eventArgs.Channel.IsPrivate
+            || eventArgs.Channel.IsNSFW
+
+            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
+            || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
+
+            || guildData.GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None
+            || userData.ResponsePermission != AIResponsePermission.None;
+    }
+
+
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        if(eventArgs.Author.IsBot // Check if the author is a bot
-            || eventArgs.Channel.IsPrivate // Check if the channel is a direct message
-            || eventArgs.Channel.IsNSFW // Check if the channel is NSFW
-            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages) // Check if the bot has permission to send messages
-            || databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted
-            || databaseService.Data.GetOrDefaultUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None // Check if the user is blacklisted (This is a global blacklist)
-            || eventArgs.Message.Content.StartsWith(databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id).Options.Prefix, StringComparison.OrdinalIgnoreCase)) // Check if the message is a prefix command
-            return;
+        if(ShouldIgnoreMessage(eventArgs)) return;
 
         ChatMessages.TryAdd(eventArgs.Channel.Id, []);
 
