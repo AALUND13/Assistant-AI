@@ -8,9 +8,12 @@ public enum AIResponsePermission {
     Blacklisted,
 }
 
-public record struct ChatMessageContentPartData(string Text);
-public record struct ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
-public record struct ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
+
+
+public record ChatMessageContentPartData(string Text);
+public record ChatToolCallData(string Id, string FunctionName, string FunctionArguments);
+public record ChatMessageData(ChatMessageRole Role, List<ChatMessageContentPartData> ContentParts, List<ChatToolCallData>? ToolCalls, string? ToolCallId);
+
 
 
 public class GuildOptions {
