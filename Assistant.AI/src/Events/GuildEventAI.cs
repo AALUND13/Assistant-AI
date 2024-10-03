@@ -1,5 +1,4 @@
 ﻿using AssistantAI.DataTypes;
-using AssistantAI.Services;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
@@ -47,6 +46,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             .WithToolFunction(AddOrOverwriteUserMemory)
             .WithToolFunction(RemoveGuildMemory)
             .WithToolFunction(RemoveUserMemory)
+            .WithToolFunction(GetUserMemory)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 

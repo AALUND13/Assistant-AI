@@ -72,7 +72,6 @@ public class OptionsCommands {
 
         Type? optionType = typeof(GuildOptions).GetFields().First(x => x.Name == options).FieldType;
         if(optionType == null) {
-            logger.Error($"Option '{options}' not found.");
             return ctx.ResponeTryEphemeral("No option found with that name.", true);
         }
 

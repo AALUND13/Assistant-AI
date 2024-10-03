@@ -63,4 +63,17 @@ public partial class GuildEvent {
             return $"Guild memory key {key} has been removed";
         return $"Guild memory key {key} was not found";
     }
+
+    [Description("Get the user memory.")]
+    string GetUserMemory([Description("The user ID to get memory from.")] ulong userID) {
+        if(!UserMemory.ContainsKey(userID))
+            return "User memory is empty";
+
+        var stringBuilder = new StringBuilder();
+        stringBuilder.Append("User memory: ");
+        foreach(var (key, value) in UserMemory[userID])
+            stringBuilder.Append($"{key}: {value}, ");
+
+        return stringBuilder.ToString();
+    }
 }

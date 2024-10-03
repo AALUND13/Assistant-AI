@@ -35,8 +35,8 @@ public partial class GuildEvent {
         if(userMemory.Count == 0) {
             stringBuilder.Append("No user memory has been stored\n");
         } else {
-            foreach(KeyValuePair<string, string> memory in userMemory) {
-                stringBuilder.Append($"{memory.Key}: {memory.Value}\n");
+            foreach(var (key, memory) in userMemory) {
+                stringBuilder.Append($"{key}: {memory}\n");
             }
         }
 
