@@ -17,7 +17,7 @@ public static class ChatMessageExtensions {
 
         return new ChatMessageData {
             Role = role,
-            ContentParts = chatMessage.Content.Select(ctx => new ChatMessageContentPartData(ctx.Text, ctx.ImageUri)).ToList(),
+            ContentParts = chatMessage.Content.Select(ctx => new ChatMessageContentPartData(ctx.Text)).ToList(),
 
             ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
                 .Select(toolCall => new ChatToolCallData(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString())).ToList() : null,
@@ -34,11 +34,7 @@ public static class ChatMessageExtensions {
     public static ChatMessage Deserialize(this ChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];
         foreach(ChatMessageContentPartData contentPartData in chatMessageData.ContentParts) {
-            if(contentPartData.ImageUri != null) {
-                messageContentParts.Add(ChatMessageContentPart.CreateImagePart(contentPartData.ImageUri));
-            } else {
-                messageContentParts.Add(ChatMessageContentPart.CreateTextPart(contentPartData.Text));
-            }
+            messageContentParts.Add(ChatMessageContentPart.CreateTextPart(contentPartData.Text));
         }
 
         List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
