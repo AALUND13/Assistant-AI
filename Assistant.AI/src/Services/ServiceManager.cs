@@ -69,7 +69,8 @@ public static class ServiceManager {
         logger.Info("Temporary configuration service loaded.");
 
         services.AddDbContext<SqliteDatabaseContext>(options =>
-            options.UseSqlite("Data Source=database.db"));
+            options.UseSqlite("Data Source=database.db"), ServiceLifetime.Transient);
+
 
         logger.Debug("Initializing Discord client services...");
         services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);

@@ -1,5 +1,7 @@
 ﻿using AssistantAI.DataTypes;
 using AssistantAI.Utilities.Extension;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
 using System.Text;
 
@@ -61,11 +63,20 @@ public partial class GuildEvent {
         return ChatMessage.CreateSystemMessage(stringBuilder.ToString());
     }
 
-
     private void LoadMessagesFromDatabase() {
-        Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet.ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
-        Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet.ToDictionary(guild => (ulong)guild.GuildId, guild => guild);
-        Dictionary<ulong, UserData> users = databaseContent.UserDataSet.ToDictionary(user => (ulong)user.UserId, user => user);
+        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+        Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet
+            .Include(channel => channel.ChatMessages)
+            .ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
+
+        Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet
+            .Include(guild => guild.GuildMemory)
+            .ToDictionary(guild => (ulong)guild.GuildId, guild => guild);
+
+        Dictionary<ulong, UserData> users = databaseContent.UserDataSet
+            .Include(user => user.UserMemory)
+            .ToDictionary(user => (ulong)user.UserId, user => user);
 
 
         foreach(ulong channelID in channels.Keys) {
@@ -77,24 +88,27 @@ public partial class GuildEvent {
         foreach(ulong guildID in guilds.Keys) {
             GuildData guild = guilds[guildID];
 
-            GuildMemory.Add(guildID, guild.GuildMemory.Select(memory => 
+            GuildMemory.Add(guildID, guild.GuildMemory.Select(memory =>
                 new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
 
         foreach(ulong userID in users.Keys) {
             UserData user = users[userID];
 
-            UserMemory.Add(userID, user.UserMemory.Select(memory => 
+            UserMemory.Add(userID, user.UserMemory.Select(memory =>
                 new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
     }
 
     private void SaveMessagesToDatabase() {
-
-
+        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
+        
         // Save the chat messages to the database.
         foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData? channel = databaseContent.ChannelDataSet.FirstOrDefault(c => (ulong)c.ChannelId == channelID);
+            ChannelData? channel = databaseContent.ChannelDataSet
+                .Include(c => c.ChatMessages)
+                .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
+
             if(channel == null) {
                 channel = new ChannelData {
                     ChannelId = (long)channelID,
@@ -109,30 +123,37 @@ public partial class GuildEvent {
 
         // Save the guild memory to the database.
         foreach(ulong guildID in GuildMemory.Keys) {
-            GuildData? guild = databaseContent.GuildDataSet.FirstOrDefault(g => (ulong)g.GuildId == guildID);
+            GuildData? guild = databaseContent.GuildDataSet
+                .Include(g => g.GuildMemory)
+                .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+
             if(guild == null) {
                 guild = new GuildData {
                     GuildId = (long)guildID,
-                    GuildMemory = GuildMemory[guildID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value}).ToList()
+                    GuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
                 };
                 databaseContent.GuildDataSet.Add(guild);
             } else {
-                guild.GuildMemory = GuildMemory[guildID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                guild.GuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
                 databaseContent.GuildDataSet.Update(guild);
             }
         }
 
         // Save the user memory to the database.
         foreach(ulong userID in UserMemory.Keys) {
-            UserData? user = databaseContent.UserDataSet.FirstOrDefault(u => (ulong)u.UserId == userID);
+            UserData? user = databaseContent.UserDataSet
+                .Include(u => u.UserMemory)
+                .FirstOrDefault(u => (ulong)u.UserId == userID);
+
+
             if(user == null) {
                 user = new UserData {
                     UserId = (long)userID,
-                    UserMemory = UserMemory[userID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
+                    UserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
                 };
                 databaseContent.UserDataSet.Add(user);
             } else {
-                user.UserMemory = UserMemory[userID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                user.UserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
                 databaseContent.UserDataSet.Update(user);
             }
         }

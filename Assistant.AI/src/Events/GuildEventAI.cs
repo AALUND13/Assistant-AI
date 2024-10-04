@@ -20,10 +20,10 @@ public record struct ChannelTimerInfo(int Amount, Timer Timer);
 public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
 
+    private readonly IServiceProvider serviceProvider;
+
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
-
-    private readonly SqliteDatabaseContext databaseContent;
 
     private readonly List<IFilterService> filterServices;
 
@@ -33,11 +33,12 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
     public GuildEvent(IServiceProvider serviceProvider) {
+        this.serviceProvider = serviceProvider;
+
+        logger.Info("Initializing GuildEvent...");
         aiResponseService = serviceProvider.GetRequiredService<IAiResponseToolService<List<ChatMessage>>>();
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
-        databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
-
         filterServices = serviceProvider.GetServices<IFilterService>().ToList();
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
@@ -50,30 +51,53 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
+        logger.Info("Available tools: {0}", string.Join(", ", availableTools));
+
         LoadMessagesFromDatabase();
+        logger.Info("GuildEvent initialized successfully.");
     }
 
     private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
-        GuildData guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id, new GuildData());
-        UserData userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id, new UserData());
+        logger.Debug("Checking if message should be ignored...");
 
-        return eventArgs.Author.IsBot
+        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
 
+        // Retrieve guild data from the database
+        GuildData? guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id);
+        if(guildData == null) {
+            logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild.Id);
+            guildData = new GuildData(); // Assign default value if no result is found
+        }
+
+        // Retrieve user data from the database
+        UserData? userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
+        if(userData == null) {
+            logger.Warn("No user data found for User ID: {0}, using default.", eventArgs.Author.Id);
+            userData = new UserData(); // Assign default value if no result is found
+        }
+
+        bool shouldIgnore = eventArgs.Author.IsBot
             || !guildData.Options.Enabled
-
             || eventArgs.Channel.IsPrivate
             || eventArgs.Channel.IsNSFW
-
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
-
-            || guildData.GuildUsers.FirstOrDefault(u => (ulong)u.GuildUserId == eventArgs.Author.Id, new GuildUserData())?.ResponsePermission != AIResponsePermission.None
+            || (guildData.GuildUsers.FirstOrDefault(u => (ulong)u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None
             || userData.ResponsePermission != AIResponsePermission.None;
+
+        if(shouldIgnore)
+            logger.Info("Message ignored for User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild.Id);
+
+        return shouldIgnore;
     }
 
-
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        if(ShouldIgnoreMessage(eventArgs)) return;
+        logger.Info("Handling message event from User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild.Id);
+
+        if(ShouldIgnoreMessage(eventArgs)) {
+            logger.Info("Message ignored. No further processing required.");
+            return;
+        }
 
         ChatMessages.TryAdd(eventArgs.Channel.Id, []);
 
@@ -83,12 +107,14 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         SystemChatMessage userMemory = GenerateUserMemorySystemMessage(eventArgs.Author.Id);
         SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
 
-        List<ChatMessage> messages = ChatMessages[eventArgs.Channel.Id];
+        List<ChatMessage> messages = new(ChatMessages[eventArgs.Channel.Id]);
         messages.Insert(0, userMemory);
         messages.Insert(0, guildMemory);
 
         bool shouldReply = await aiDecisionService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message)));
+
         if(shouldReply) {
+            logger.Info("Bot decided to reply. Initiating response...");
             await AddTypingTimerForChannel(eventArgs.Channel);
 
             ToolTrigger toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
@@ -99,7 +125,6 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
                 if(textPartIndex == -1) continue;
 
                 string textPart = message.Content[textPartIndex].Text!;
-
                 foreach(var filterService in filterServices) {
                     textPart = await filterService.FilterAsync(textPart);
                 }
@@ -109,22 +134,26 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
             await eventArgs.Message.RespondAsync(assistantChatMessages.Last().GetTextMessagePart().Text);
+            logger.Info("Bot response sent to channel {0}.", eventArgs.Channel.Id);
 
             assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Channel.Id));
         }
 
         SaveMessagesToDatabase();
+        logger.Info("Messages saved to database.");
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {
-        ChannelTimerInfo channelTimerInfo = channelTypingTimer[channel.Id];
+        if(!channelTypingTimer.TryGetValue(channel.Id, out var channelTimerInfo))
+            return;
+
         channelTimerInfo.Amount--;
 
         if(channelTimerInfo.Amount == 0) {
             channelTimerInfo.Timer.Stop();
             channelTimerInfo.Timer.Dispose();
-
             channelTypingTimer.Remove(channel.Id);
+            logger.Info("Typing timer removed for channel {0}.", channel.Id);
         }
     }
 
@@ -133,8 +162,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         channelTimer.Elapsed += async (sender, e) => {
             try {
                 await channel.TriggerTypingAsync();
-            } catch {
-                logger.Warn("Failed to trigger typing in channel {0}", channel.Id);
+            } catch(Exception ex) {
+                logger.Warn(ex, "Failed to trigger typing in channel {0}", channel.Id);
             }
         };
 
@@ -143,11 +172,14 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         channelTimerInfo.Amount++;
 
         channelTypingTimer.SetOrAdd(channel.Id, channelTimerInfo);
+        logger.Info("Typing timer added for channel {0}.", channel.Id);
 
         await channel.TriggerTypingAsync();
     }
 
     private List<ChatMessageContentPart> HandleDiscordMessage(DiscordMessage discordMessage) {
+        logger.Info("Processing Discord message from User ID: {0}", discordMessage.Author.Id);
+
         List<Uri> imageURL = discordMessage.Attachments
             .Where(attachment => attachment.MediaType!.StartsWith("image"))
             .Select(attachment => new Uri(attachment.Url!)).ToList();
@@ -164,7 +196,6 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         }
 
         var chatMessageContentParts = new List<ChatMessageContentPart>();
-
         chatMessageContentParts.AddRange(imageURL.Select(url => ChatMessageContentPart.CreateImagePart(url)));
         chatMessageContentParts.Add(ChatMessageContentPart.CreateTextPart($"[{stringBuilder}] {discordMessage.Content}"));
 
