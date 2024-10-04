@@ -29,7 +29,7 @@ public class GuildPrefixResolver : IPrefixResolver {
                 return ValueTask.FromResult(Prefix.Length);
             }
         } else {
-            IDatabaseService<Data> databaseService = ServiceManager.GetService<IDatabaseService<Data>>();
+            IDatabaseService databaseService = ServiceManager.GetService<IDatabaseService>();
             GuildData guildData = databaseService.Data.GetOrDefaultGuild(message.Channel.Guild.Id);
 
             if(string.IsNullOrWhiteSpace(guildData.Options.Prefix)) {

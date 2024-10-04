@@ -5,7 +5,7 @@ using System.Reflection;
 namespace AssistantAI.Utilities.Extension;
 
 public static class ChatMessageExtensions {
-    public static ChatMessageData Serialize(this ChatMessage chatMessage) {
+    public static ChannelChatMessageData Serialize(this ChatMessage chatMessage) {
         var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
         var urls = new List<Uri>();
 
@@ -15,14 +15,21 @@ public static class ChatMessageExtensions {
             }
         }
 
-        return new ChatMessageData {
+
+
+
+        return new ChannelChatMessageData() {
             Role = role,
-            ContentParts = chatMessage.Content.Select(ctx => new ChatMessageContentPartData(ctx.Text)).ToList(),
+            Text = chatMessage.Content[0].Text,
 
             ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
-                .Select(toolCall => new ChatToolCallData(toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments.ToString())).ToList() : null,
+            .Select(toolCall => new ChatToolCallData() {
+                ToolID = toolCall.Id,
+                FunctionName = toolCall.FunctionName,
+                FunctionArguments = toolCall.FunctionArguments.ToString()
+            }).ToList() : null,
 
-            ToolCallId = chatMessage is ToolChatMessage ToolChatMessage ? ToolChatMessage.ToolCallId : null,
+            ToolCallId = chatMessage is ToolChatMessage ToolChatMessage ? ToolChatMessage.ToolCallId : null
         };
     }
 
@@ -31,14 +38,12 @@ public static class ChatMessageExtensions {
         return chatMessage.Content.First(ctx => ctx is ChatMessageContentPart part && part.Text != null);
     }
 
-    public static ChatMessage Deserialize(this ChatMessageData chatMessageData) {
+    public static ChatMessage Deserialize(this ChannelChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];
-        foreach(ChatMessageContentPartData contentPartData in chatMessageData.ContentParts) {
-            messageContentParts.Add(ChatMessageContentPart.CreateTextPart(contentPartData.Text));
-        }
+        messageContentParts.Add(ChatMessageContentPart.CreateTextPart(chatMessageData.Text));
 
         List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
-            .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.Id, toolCalls.FunctionName, BinaryData.FromString(toolCalls.FunctionArguments)))?
+            .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.ToolID, toolCalls.FunctionName, BinaryData.FromString(toolCalls.FunctionArguments)))?
             .ToList();
 
         ChatMessage chatMessage = chatMessageData.Role switch {

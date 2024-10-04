@@ -1,18 +1,14 @@
-﻿using AssistantAI.Commands.Parsing;
-using AssistantAI.ContextChecks;
-using AssistantAI.DataTypes;
-using AssistantAI.Services.AI;
+﻿using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.EventArgs;
 using DSharpPlus.Commands.Exceptions;
 using DSharpPlus.Commands.Processors.SlashCommands;
-using DSharpPlus.Commands.Processors.TextCommands;
-using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -37,8 +33,9 @@ public static class ServiceManager {
         IConfigService configService = GetService<IConfigService>();
         configService.LoadConfig();
 
-        IDatabaseService<Data> databaseService = GetService<IDatabaseService<Data>>();
-        databaseService.LoadDatabase(new Data());
+        using(SqliteDatabaseContext context = GetService<SqliteDatabaseContext>()) {
+            context.Database.EnsureCreated();
+        }
 
         InializeDiscordClient();
     }
@@ -65,14 +62,14 @@ public static class ServiceManager {
         });
 
         services.AddSingleton<IConfigService, ENVConfigService>();
-        services.AddSingleton<IDatabaseService<Data>, JsonDatabaseService<Data>>();
 
         ServiceProvider = services.BuildServiceProvider(); // Create a temporary service provider to get the config service
         IConfigService configService = ServiceProvider.GetRequiredService<IConfigService>();
         configService.LoadConfig();
         logger.Info("Temporary configuration service loaded.");
 
-
+        services.AddDbContext<SqliteDatabaseContext>(options =>
+            options.UseSqlite("Data Source=database.db"));
 
         logger.Debug("Initializing Discord client services...");
         services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);
@@ -84,15 +81,15 @@ public static class ServiceManager {
                 extension.AddCommands(Assembly.GetExecutingAssembly());
 
                 SlashCommandProcessor slashCommandProcessor = new(new());
-                TextCommandProcessor textCommandProcessor = new(new() {
-                    PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
-                });
+                //TextCommandProcessor textCommandProcessor = new(new() {
+                //    PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
+                //});
 
                 extension.CommandErrored += CommandErrorHandler;
 
-                extension.AddProcessors(slashCommandProcessor, textCommandProcessor);
+                extension.AddProcessors(slashCommandProcessor/*, textCommandProcessor*/);
 
-                extension.AddCheck<CooldownCheck>();
+                //extension.AddCheck<CooldownCheck>();
             },
             new CommandsConfiguration() {
                 RegisterDefaultCommandProcessors = false,

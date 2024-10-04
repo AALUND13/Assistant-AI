@@ -8,7 +8,7 @@ namespace AssistantAI.Events;
 // All the data methods/properties of the GuildEvent class.
 public partial class GuildEvent {
     public Dictionary<ulong, List<ChatMessage>> ChatMessages { get; init; } = [];
-    public Dictionary<ulong, List<ChatMessageData>> SerializedChatMessages => SerializeChatMessages();
+    public Dictionary<ulong, List<ChannelChatMessageData>> SerializedChatMessages => SerializeChatMessages();
 
     public Dictionary<ulong, Dictionary<string, string>> GuildMemory { get; init; } = [];
     public Dictionary<ulong, Dictionary<string, string>> UserMemory { get; init; } = [];
@@ -63,61 +63,85 @@ public partial class GuildEvent {
 
 
     private void LoadMessagesFromDatabase() {
-        // Load the chat messages from the database.
-        Dictionary<ulong, ChannelData> channels = databaseService.Data.Channels;
+        Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet.ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
+        Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet.ToDictionary(guild => (ulong)guild.GuildId, guild => guild);
+        Dictionary<ulong, UserData> users = databaseContent.UserDataSet.ToDictionary(user => (ulong)user.UserId, user => user);
+
+
         foreach(ulong channelID in channels.Keys) {
             ChannelData channelData = channels[channelID];
 
             ChatMessages.Add(channelID, channelData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
         }
 
-        // Load the guild memory from the database.
-        Dictionary<ulong, GuildData> guilds = databaseService.Data.Guilds;
         foreach(ulong guildID in guilds.Keys) {
             GuildData guild = guilds[guildID];
 
-            GuildMemory.Add(guildID, guild.GuildMemory);
+            GuildMemory.Add(guildID, guild.GuildMemory.Select(memory => 
+                new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
 
-        // Load the user memory from the database.
-        Dictionary<ulong, UserData> users = databaseService.Data.Users;
         foreach(ulong userID in users.Keys) {
             UserData user = users[userID];
 
-            UserMemory.Add(userID, user.UserMemory);
+            UserMemory.Add(userID, user.UserMemory.Select(memory => 
+                new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
     }
 
     private void SaveMessagesToDatabase() {
+
+
         // Save the chat messages to the database.
         foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData channel = databaseService.Data.GetOrDefaultChannel(channelID);
-            channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
-
-            databaseService.Data.Channels[channelID] = channel;
+            ChannelData? channel = databaseContent.ChannelDataSet.FirstOrDefault(c => (ulong)c.ChannelId == channelID);
+            if(channel == null) {
+                channel = new ChannelData {
+                    ChannelId = (long)channelID,
+                    ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList()
+                };
+                databaseContent.ChannelDataSet.Add(channel);
+            } else {
+                channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+                databaseContent.ChannelDataSet.Update(channel);
+            }
         }
 
         // Save the guild memory to the database.
         foreach(ulong guildID in GuildMemory.Keys) {
-            GuildData guild = databaseService.Data.GetOrDefaultGuild(guildID);
-            guild.GuildMemory = GuildMemory[guildID];
-
-            databaseService.Data.Guilds[guildID] = guild;
+            GuildData? guild = databaseContent.GuildDataSet.FirstOrDefault(g => (ulong)g.GuildId == guildID);
+            if(guild == null) {
+                guild = new GuildData {
+                    GuildId = (long)guildID,
+                    GuildMemory = GuildMemory[guildID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value}).ToList()
+                };
+                databaseContent.GuildDataSet.Add(guild);
+            } else {
+                guild.GuildMemory = GuildMemory[guildID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                databaseContent.GuildDataSet.Update(guild);
+            }
         }
 
         // Save the user memory to the database.
         foreach(ulong userID in UserMemory.Keys) {
-            UserData user = databaseService.Data.GetOrDefaultUser(userID);
-            user.UserMemory = UserMemory[userID];
-
-            databaseService.Data.Users[userID] = user;
+            UserData? user = databaseContent.UserDataSet.FirstOrDefault(u => (ulong)u.UserId == userID);
+            if(user == null) {
+                user = new UserData {
+                    UserId = (long)userID,
+                    UserMemory = UserMemory[userID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
+                };
+                databaseContent.UserDataSet.Add(user);
+            } else {
+                user.UserMemory = UserMemory[userID].Select(memory => new MemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                databaseContent.UserDataSet.Update(user);
+            }
         }
 
-        databaseService.SaveDatabase();
+        databaseContent.SaveChanges();
     }
 
-    private Dictionary<ulong, List<ChatMessageData>> SerializeChatMessages() {
-        var chatMessages = new Dictionary<ulong, List<ChatMessageData>>();
+    private Dictionary<ulong, List<ChannelChatMessageData>> SerializeChatMessages() {
+        var chatMessages = new Dictionary<ulong, List<ChannelChatMessageData>>();
 
         foreach(KeyValuePair<ulong, List<ChatMessage>> chatMessage in ChatMessages) {
             chatMessages.Add(chatMessage.Key, chatMessage.Value.Select(msg => msg.Serialize()).ToList());

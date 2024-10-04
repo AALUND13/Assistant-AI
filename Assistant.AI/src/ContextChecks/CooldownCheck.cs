@@ -5,6 +5,7 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using NLog;
+using System;
 
 namespace AssistantAI.ContextChecks;
 
@@ -17,10 +18,11 @@ public class CooldownAttribute : ContextCheckAttribute {
 
 public class CooldownCheck : IContextCheck<CooldownAttribute> {
     private const string ErrorMessage = "You are on cooldown. Please wait {0} before using this command again.";
-    private readonly static IDatabaseService<Data> DatabaseService = ServiceManager.GetService<IDatabaseService<Data>>();
+    private readonly static SqliteDatabaseContext databaseContent = ServiceManager.GetService<SqliteDatabaseContext>();
 
     public ValueTask<string?> ExecuteCheckAsync(CooldownAttribute attribute, CommandContext context) {
-        UserData userData = DatabaseService.Data.Users.GetOrAdd(context.User.Id, new UserData());
+        UserData userData = databaseContent.UserDataSet.FirstOrDefault(User => (ulong)User.Id == context.User.Id);
+
         double cooldown = userData.CommandCooldowns.GetOrAdd(context.Command.FullName, 0);
         double timeLeft = cooldown - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -29,8 +31,8 @@ public class CooldownCheck : IContextCheck<CooldownAttribute> {
             return ValueTask.FromResult<string?>(string.Format(ErrorMessage, $"<t:{(uint)cooldown}:R>"));
         } else {
             userData.CommandCooldowns[context.Command.FullName] = DateTimeOffset.UtcNow.Add(attribute.Cooldown).ToUnixTimeSeconds();
-            DatabaseService.Data.Users[context.User.Id] = userData;
-            DatabaseService.SaveDatabase();
+            databaseContent.Data.Users[context.User.Id] = userData;
+            databaseContent.SaveDatabase();
 
             return ValueTask.FromResult<string?>(null);
         }

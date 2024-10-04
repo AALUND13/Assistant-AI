@@ -23,7 +23,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
-    private readonly IDatabaseService<Data> databaseService;
+    private readonly SqliteDatabaseContext databaseContent;
 
     private readonly List<IFilterService> filterServices;
 
@@ -35,7 +35,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     public GuildEvent(IServiceProvider serviceProvider) {
         aiResponseService = serviceProvider.GetRequiredService<IAiResponseToolService<List<ChatMessage>>>();
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
-        databaseService = serviceProvider.GetRequiredService<IDatabaseService<Data>>();
+        databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
 
         filterServices = serviceProvider.GetServices<IFilterService>().ToList();
@@ -54,8 +54,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     }
 
     private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
-        var guildData = databaseService.Data.GetOrDefaultGuild(eventArgs.Guild.Id);
-        var userData = databaseService.Data.GetOrDefaultUser(eventArgs.Author.Id);
+        GuildData guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id, new GuildData());
+        UserData userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id, new UserData());
 
         return eventArgs.Author.IsBot
 
@@ -67,7 +67,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
 
-            || guildData.GetOrDefaultGuildUser(eventArgs.Author.Id).ResponsePermission != AIResponsePermission.None
+            || guildData.GuildUsers.FirstOrDefault(u => (ulong)u.GuildUserId == eventArgs.Author.Id, new GuildUserData())?.ResponsePermission != AIResponsePermission.None
             || userData.ResponsePermission != AIResponsePermission.None;
     }
 

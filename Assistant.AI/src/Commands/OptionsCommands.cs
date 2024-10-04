@@ -40,7 +40,7 @@ public class OptionsCommands {
     [RequireGuild()]
     [Cooldown(5)]
     public static ValueTask GetOptions(CommandContext ctx) {
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+        IDatabaseService database = ServiceManager.GetService<IDatabaseService>();
         GuildData guildData = database.Data.GetOrDefaultGuild(ctx.Guild!.Id);
 
         object?[] options = typeof(GuildOptions).GetFields().Select(x => x.GetValue(guildData.Options)).ToArray();
@@ -67,7 +67,7 @@ public class OptionsCommands {
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
     [Cooldown(5)]
     public static ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
+        IDatabaseService database = ServiceManager.GetService<IDatabaseService>();
         GuildData guildData = database.Data.GetOrDefaultGuild(ctx.Guild!.Id);
 
         Type? optionType = typeof(GuildOptions).GetFields().First(x => x.Name == options).FieldType;

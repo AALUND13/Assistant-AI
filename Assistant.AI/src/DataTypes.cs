@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OpenAI.Chat;
+﻿using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AssistantAI.DataTypes;
 
@@ -10,96 +10,105 @@ public enum AIResponsePermission {
     Blacklisted,
 }
 
-
-
-public class ChatMessageContentPartData {
+// Tool Call Data
+public class ChatToolCallData {
+    [Key]
     public int Id { get; set; } // Primary key for SQLite
 
+    [Required]
+    public string ToolID { get; set; }
+
+    [Required]
+    public string FunctionName { get; set; }
+
+    [Required]
+    public string FunctionArguments { get; set; }
+}
+
+// Chat Message Data
+public class ChannelChatMessageData {
+    [Key]
+    public int Id { get; set; } // Primary key for SQLite
+
+    [Required]
+    public ChatMessageRole Role { get; set; }
+
+    [Required]
     public string Text { get; set; }
 
-    public ChatMessageContentPartData(string text) {
-        Text = text;
-    }
+    public List<ChatToolCallData>? ToolCalls { get; set; } // Nullable if there are no tools
+
+    public string? ToolCallId { get; set; } // Nullable if no ToolCallId exists
 }
 
-public class ChatToolCallData {
-    public int Id { get; set; } // Primary key for SQLite
+public class ChannelData {
+    [Key]
+    public long ChannelId { get; set; } // Primary key for SQLite
 
-    public string ToolID { get; set; }
-    public string FunctionName { get; set; }
-    public string FunctionArguments { get; set; }
-
-    public ChatToolCallData(string toolID, string functionName, string functionArguments) {
-        ToolID = toolID;
-        FunctionName = functionName;
-        FunctionArguments = functionArguments;
-    }
+    public List<ChannelChatMessageData> ChatMessages { get; set; } = [];
 }
 
-public class ChatMessageData {
-    public int Id { get; set; } // Primary key for SQLite
-
-    public ChatMessageRole Role { get; set; }
-    public List<ChatMessageContentPartData> ContentParts { get; set; }
-    public List<ChatToolCallData>? ToolCalls { get; set; }
-    public string? ToolCallId { get; set; }
-
-    public ChatMessageData(ChatMessageRole role, List<ChatMessageContentPartData> contentParts, List<ChatToolCallData>? toolCalls, string? toolCallId) {
-        Role = role;
-        ContentParts = contentParts;
-        ToolCalls = toolCalls;
-        ToolCallId = toolCallId;
-    }
-}
-
-// User data
+// User Data
 public class MemoryItem {
+    [Key]
     public int Id { get; set; } // Primary key for SQLite
 
+    [Required]
     public string Key { get; set; }
+
+    [Required]
     public string Value { get; set; }
 
-    public int UserDataId { get; set; } // Foreign key for the UserData relationship
-    public UserData UserData { get; set; } // Navigation property
+    // Change the foreign key to long to match the primary key in UserData
+    [ForeignKey("UserData")]
+    public long UserDataId { get; set; } // Foreign key for the UserData relationship
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    public MemoryItem(string key, string value) {
-        Key = key;
-        Value = value;
-    }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public UserData UserData { get; set; } // Navigation property
 }
 
 public class UserData {
-    public long Id { get; set; } // Primary key for SQLite
+    [Key]
+    public long UserId { get; set; } // Primary key for SQLite
 
-    public List<ChatMessageData> ChatMessages { get; set; } = [];
-    public List<MemoryItem> Memory { get; set; } = [];
+    public List<ChannelChatMessageData> ChatMessages { get; set; } = [];
+
+    public List<MemoryItem> UserMemory { get; set; } = [];
 
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
 }
 
-// Guild data
-
+// Guild User Data
 public class GuildUserData {
-    public long Id { get; set; } // Primary key for SQLite
+    [Key]
+    public long GuildUserId { get; set; } // Primary key for SQLite
 
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
-    public GuildOptions Options { get; set; } = new();
 
-    public int GuildDataId { get; set; } // Foreign key for the GuildData relationship
+    [ForeignKey("GuildData")]
+    public long GuildDataId { get; set; } // Foreign key for the GuildData relationship
+
     public GuildData GuildData { get; set; } // Navigation property
 }
 
+
+// Guild Options
 public class GuildOptions {
-    public bool Enabled = true;
-    public string Prefix = "a!";
+    [Key]
+    public long GuildOptionsId { get; set; } // Primary key for SQLite
+
+    public bool Enabled { get; set; } = true;
+
+    public string Prefix { get; set; } = "a!";
 }
 
+// Guild Data
 public class GuildData {
+    [Key]
     public long GuildId { get; set; } // Primary key for SQLite
 
     public List<GuildUserData> GuildUsers { get; set; } = [];
+
     public List<MemoryItem> GuildMemory { get; set; } = [];
+
     public GuildOptions Options { get; set; } = new();
 }
