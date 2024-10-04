@@ -20,7 +20,7 @@ public static class ChatMessageExtensions {
 
         return new ChannelChatMessageData() {
             Role = role,
-            Text = chatMessage.Content[0].Text,
+            Text = chatMessage.Content is { Count: > 0 } ? chatMessage.GetTextMessagePart().Text : null,
 
             ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
             .Select(toolCall => new ChatToolCallData() {

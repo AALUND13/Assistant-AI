@@ -109,10 +109,12 @@ public partial class GuildEvent {
                 .Include(c => c.ChatMessages)
                 .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
 
+            var serializedChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+
             if(channel == null) {
                 channel = new ChannelData {
                     ChannelId = (long)channelID,
-                    ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList()
+                    ChatMessages = serializedChatMessages
                 };
                 databaseContent.ChannelDataSet.Add(channel);
             } else {
@@ -127,14 +129,19 @@ public partial class GuildEvent {
                 .Include(g => g.GuildMemory)
                 .FirstOrDefault(g => (ulong)g.GuildId == guildID);
 
+            var serializedGuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { 
+                Key = memory.Key, 
+                Value = memory.Value,
+            }).ToList();
+            
             if(guild == null) {
                 guild = new GuildData {
                     GuildId = (long)guildID,
-                    GuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
+                    GuildMemory = serializedGuildMemory,
                 };
                 databaseContent.GuildDataSet.Add(guild);
             } else {
-                guild.GuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                guild.GuildMemory = serializedGuildMemory;
                 databaseContent.GuildDataSet.Update(guild);
             }
         }
@@ -145,15 +152,19 @@ public partial class GuildEvent {
                 .Include(u => u.UserMemory)
                 .FirstOrDefault(u => (ulong)u.UserId == userID);
 
+            var serializedUserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { 
+                Key = memory.Key, 
+                Value = memory.Value
+            }).ToList();
 
             if(user == null) {
                 user = new UserData {
                     UserId = (long)userID,
-                    UserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList()
+                    UserMemory = serializedUserMemory,
                 };
                 databaseContent.UserDataSet.Add(user);
             } else {
-                user.UserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { Key = memory.Key, Value = memory.Value }).ToList();
+                user.UserMemory = serializedUserMemory;
                 databaseContent.UserDataSet.Update(user);
             }
         }

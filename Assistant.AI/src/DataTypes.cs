@@ -16,6 +16,11 @@ public class ChatToolCallData {
     public required string ToolID { get; set; }
     public required string FunctionName { get; set; }
     public required string FunctionArguments { get; set; }
+
+    [ForeignKey("ChannelChatMessageData")] public int ChannelChatMessageDataId { get; set; }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public ChannelChatMessageData ChannelChatMessageData { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
 
 public class ChannelChatMessageData {
@@ -39,24 +44,31 @@ public class ChannelData {
     public List<ChannelChatMessageData> ChatMessages { get; set; } = [];
 }
 
-public abstract class MemoryItem<T> {
+
+public class UserMemoryItem {
     [Key] public int Id { get; set; }
 
     public required string Key { get; set; }
 
     public required string Value { get; set; }
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    public T RelatedData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-}
-
-public class UserMemoryItem : MemoryItem<UserData> {
     [ForeignKey("UserData")] public long UserId { get; set; }
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public UserData RelatedData { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable
 }
 
-public class GuildMemoryItem : MemoryItem<GuildData> {
+public class GuildMemoryItem {
+    [Key] public int Id { get; set; }
+
+    public required string Key { get; set; }
+
+    public required string Value { get; set; }
     [ForeignKey("GuildData")] public long GuildId { get; set; }
+
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public GuildData RelatedData { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable
 }
 
 
