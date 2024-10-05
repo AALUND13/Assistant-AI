@@ -53,7 +53,8 @@ public class AICommands {
             return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
         else if(userData.ResponsePermission == AIResponsePermission.Blacklisted)
             return ctx.ResponeTryEphemeral("You can't blacklist a user that is globally blacklisted.", true);
-
+        else if (guildUserData.ResponsePermission == (blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None))
+            return ctx.ResponeTryEphemeral($"{user.Mention} is already {(blacklisted ? "blacklisted" : "unblacklisted")} from using the AI.", true);
 
         guildUserData.ResponsePermission = blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None;
         if(!guildExists) {
@@ -111,6 +112,8 @@ public class AICommands {
             return ctx.ResponeTryEphemeral("You can't ignore yourself if you are blacklisted.", true);
         else if(userData.ResponsePermission == AIResponsePermission.Blacklisted)
             return ctx.ResponeTryEphemeral("You can't ignore yourself if you are globally blacklisted.", true);
+        else if(guildUserData.ResponsePermission == (ignore ? AIResponsePermission.Ignored : AIResponsePermission.None))
+            return ctx.ResponeTryEphemeral($"You are already {(ignore ? "ignored" : "not ignored")} by the bot.", true);
 
         guildUserData.ResponsePermission = ignore ? AIResponsePermission.Ignored : AIResponsePermission.None;
         if(!guildExists) {
