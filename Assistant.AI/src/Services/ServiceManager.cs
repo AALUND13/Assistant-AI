@@ -72,7 +72,7 @@ public static class ServiceManager {
         logger.Info("Temporary configuration service loaded.");
 
         services.AddDbContext<SqliteDatabaseContext>(options =>
-            options.UseSqlite("Data Source=database.db"), ServiceLifetime.Transient);
+            options.UseSqlite("Data Source=database.db"));
 
 
         logger.Debug("Initializing Discord client services...");
@@ -127,7 +127,7 @@ public static class ServiceManager {
                 var method = eventHandlingBuilder.GetType().GetMethod("AddEventHandlers")!.MakeGenericMethod(handlerType);
 
                 // Invoke the method dynamically
-                method.Invoke(eventHandlingBuilder, [ServiceLifetime.Singleton]);
+                method.Invoke(eventHandlingBuilder, [ServiceLifetime.Transient]);
 
                 logger.Debug("Added event handler: {TypeName}", handlerType.Name);
             }

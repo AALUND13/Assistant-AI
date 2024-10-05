@@ -6,6 +6,7 @@ using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 
 namespace AssistantAI.Commands;
@@ -18,15 +19,16 @@ public class AICommands {
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageMessages)]
     [RequireGuild()]
     [Cooldown(5)]
-    public static ValueTask BlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
-        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
+    public static async ValueTask BlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        UserData? userData = database.UserDataSet
-            .FirstOrDefault(u => (ulong)u.UserId == user.Id);
+        UserData? userData = await databaseContent.UserDataSet
+            .FirstOrDefaultAsync(u => (ulong)u.UserId == user.Id);
 
-        GuildData? guildData = database.GuildDataSet
+        GuildData? guildData = await databaseContent.GuildDataSet
             .Include(g => g.GuildUsers)
-            .FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+            .FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
 
         GuildUserData? guildUserData = guildData?.GuildUsers
             .FirstOrDefault(u => (ulong)u.GuildUserId == user.Id);
@@ -49,43 +51,48 @@ public class AICommands {
         };
 
 
-        if(user.IsBot)
-            return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
-        else if(userData.ResponsePermission == AIResponsePermission.Blacklisted)
-            return ctx.ResponeTryEphemeral("You can't blacklist a user that is globally blacklisted.", true);
-        else if (guildUserData.ResponsePermission == (blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None))
-            return ctx.ResponeTryEphemeral($"{user.Mention} is already {(blacklisted ? "blacklisted" : "unblacklisted")} from using the AI.", true);
+        if(user.IsBot) {
+            await ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+            return;
+        } else if(userData.ResponsePermission == AIResponsePermission.Blacklisted) {
+            await ctx.ResponeTryEphemeral("You can't blacklist a user that is globally blacklisted.", true);
+            return;
+        } else if(guildUserData.ResponsePermission == (blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None)) {
+            await ctx.ResponeTryEphemeral($"{user.Mention} is already {(blacklisted ? "blacklisted" : "unblacklisted")} from using the AI.", true);
+            return;
+        }
 
         guildUserData.ResponsePermission = blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None;
         if(!guildExists) {
-            database.Entry(guildData).State = EntityState.Added;
+            databaseContent.Entry(guildData).State = EntityState.Added;
         } else if(!guildUserExists) {
-            database.Entry(guildUserData).State = EntityState.Added;
+            databaseContent.Entry(guildUserData).State = EntityState.Added;
             guildData.GuildUsers.Add(guildUserData);
         } else {
-            database.Entry(guildUserData).State = EntityState.Modified;
+            databaseContent.Entry(guildUserData).State = EntityState.Modified;
         }
 
 
 
-        database.SaveChanges();
+        databaseContent.SaveChanges();
 
-        return ctx.ResponeTryEphemeral($"{(blacklisted ? "Blacklisted" : "Unblacklisted")} {user.Mention} from using the AI.", true);
+        await ctx.ResponeTryEphemeral($"{(blacklisted ? "Blacklisted" : "Unblacklisted")} {user.Mention} from using the AI.", true);
     }
 
     [Command("ignore-me")]
     [Description("'true' to be ignored by the bot, and 'false' to remove yourself from the ignore list.")]
     [RequireGuild()]
     [Cooldown(5)]
-    public static ValueTask IgnoreMe(CommandContext ctx, bool ignore = true) {
-        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
+    public static async ValueTask IgnoreMe(CommandContext ctx, bool ignore = true) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        UserData? userData = database.UserDataSet
-            .FirstOrDefault(u => (ulong)u.UserId == ctx.User.Id);
+        UserData? userData = await databaseContent.UserDataSet
+            .FirstOrDefaultAsync(u => (ulong)u.UserId == ctx.User.Id);
 
-        GuildData? guildData = database.GuildDataSet
+        GuildData? guildData = await databaseContent.GuildDataSet
             .Include(g => g.GuildUsers)
-            .FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+            .FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
 
         GuildUserData? guildUserData = guildData?.GuildUsers
             .FirstOrDefault(u => (ulong)u.GuildUserId == ctx.User.Id);
@@ -108,53 +115,58 @@ public class AICommands {
         };
 
 
-        if(guildUserData.ResponsePermission == AIResponsePermission.Blacklisted)
-            return ctx.ResponeTryEphemeral("You can't ignore yourself if you are blacklisted.", true);
-        else if(userData.ResponsePermission == AIResponsePermission.Blacklisted)
-            return ctx.ResponeTryEphemeral("You can't ignore yourself if you are globally blacklisted.", true);
-        else if(guildUserData.ResponsePermission == (ignore ? AIResponsePermission.Ignored : AIResponsePermission.None))
-            return ctx.ResponeTryEphemeral($"You are already {(ignore ? "ignored" : "not ignored")} by the bot.", true);
+        if(guildUserData.ResponsePermission == AIResponsePermission.Blacklisted) {
+            await ctx.ResponeTryEphemeral("You can't ignore yourself if you are blacklisted.", true);
+            return;
+        } else if(userData.ResponsePermission == AIResponsePermission.Blacklisted) {
+            await ctx.ResponeTryEphemeral("You can't ignore yourself if you are globally blacklisted.", true);
+            return;
+        } else if(guildUserData.ResponsePermission == (ignore ? AIResponsePermission.Ignored : AIResponsePermission.None)) {
+            await ctx.ResponeTryEphemeral($"You are already {(ignore ? "ignored" : "not ignored")} by the bot.", true);
+            return;
+        }
 
         guildUserData.ResponsePermission = ignore ? AIResponsePermission.Ignored : AIResponsePermission.None;
         if(!guildExists) {
-            database.Entry(guildData).State = EntityState.Added;
+            databaseContent.Entry(guildData).State = EntityState.Added;
         } else if(!guildUserExists) {
-            database.Entry(guildUserData).State = EntityState.Added;
+            databaseContent.Entry(guildUserData).State = EntityState.Added;
             guildData.GuildUsers.Add(guildUserData);
         } else {
-            database.Entry(guildUserData).State = EntityState.Modified;
+            databaseContent.Entry(guildUserData).State = EntityState.Modified;
         }
 
-        database.SaveChanges();
+        databaseContent.SaveChanges();
 
-        return ctx.ResponeTryEphemeral($"AI will {(ignore ? "now" : "no longer")} ignored you.", true);
+        await ctx.ResponeTryEphemeral($"AI will {(ignore ? "now" : "no longer")} ignored you.", true);
     }
 
     [Command("global-blacklist-user")]
     [Description("Globally blacklist or unblacklist a user.")]
     [RequireApplicationOwner()]
-    public static ValueTask GlobalBlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
-        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
+    public static async ValueTask GlobalBlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        UserData? userData = database.UserDataSet
+        UserData? userData = databaseContent.UserDataSet
             .FirstOrDefault(u => (ulong)u.UserId == user.Id);
 
-
         bool userExists = userData != null;
-
         userData ??= new UserData {
             UserId = (long)user.Id
         };
 
-        if(user.IsBot)
-            return ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+        if(user.IsBot) {
+            await ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+            return;
+        }
 
         userData.ResponsePermission = blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None;
-        if(!userExists)
-            database.UserDataSet.Add(userData);
+        if(!userExists) {
+            await databaseContent.UserDataSet.AddAsync(userData);
+        }
+        databaseContent.SaveChanges();
 
-        database.SaveChanges();
-
-        return ctx.ResponeTryEphemeral($"Globally {(blacklisted ? "blacklisted" : "unblacklisted")} {user.Mention}.", true);
+        await ctx.ResponeTryEphemeral($"Globally {(blacklisted ? "blacklisted" : "unblacklisted")} {user.Mention}.", true);
     }
 }

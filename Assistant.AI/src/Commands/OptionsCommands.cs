@@ -9,6 +9,7 @@ using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System.ComponentModel;
 using System.Reflection;
@@ -41,10 +42,11 @@ public class OptionsCommands {
     [Description("Get the current options for the guild.")]
     [RequireGuild()]
     [Cooldown(5)]
-    public static ValueTask GetOptions(CommandContext ctx) {
-        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
+    public static async ValueTask GetOptions(CommandContext ctx) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        GuildData? guildData = database.GuildDataSet.FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+        GuildData? guildData = await databaseContent.GuildDataSet.FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
         guildData ??= new GuildData();
 
         object?[] options = typeof(GuildOptions)
@@ -71,7 +73,7 @@ public class OptionsCommands {
 
         embed.WithDescription(optionsBuilder.ToString());
 
-        return ctx.ResponeTryEphemeral(embed, true);
+        await ctx.ResponeTryEphemeral(embed, true);
     }
 
     [Command("edit")]
@@ -79,12 +81,13 @@ public class OptionsCommands {
     [RequireGuild()]
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
     [Cooldown(5)]
-    public static ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
-        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
+    public static async ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        GuildData? guildData = database.GuildDataSet
+        GuildData? guildData = await databaseContent.GuildDataSet
             .Include(g => g.Options)
-            .FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+            .FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
 
         bool guildExist = guildData != null;
         guildData ??= new GuildData() {
@@ -97,28 +100,31 @@ public class OptionsCommands {
             .First(x => x.Name == options).PropertyType;
 
         if(optionType == null) {
-            return ctx.ResponeTryEphemeral("No option found with that name.", true);
+            await ctx.ResponeTryEphemeral("No option found with that name.", true);
+            return;
         }
 
         converters.TryGetValue(optionType, out Func<string, (object, bool)>? converter);
         if(converter == null) {
             logger.Error($"Converter for type '{optionType.Name}' not found.");
-            return ctx.ResponeTryEphemeral("An error occurred while trying to edit the options.", true);
+            await ctx.ResponeTryEphemeral("An error occurred while trying to edit the options.", true);
+            return;
         }
 
         (object returnValue, bool success) = converter.Invoke(value);
         if(!success) {
-            return ctx.ResponeTryEphemeral("Invalid value.", true);
+            await ctx.ResponeTryEphemeral("Invalid value.", true);
+            return;
         }
 
         guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, returnValue);
 
         if(!guildExist)
-            database.GuildDataSet.Add(guildData);
+            databaseContent.GuildDataSet.Add(guildData);
 
-        database.SaveChanges();
+        databaseContent.SaveChanges();
 
 
-        return ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{returnValue}`.", true);
+        await ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{returnValue}`.", true);
     }
 }

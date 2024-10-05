@@ -2,13 +2,7 @@
 using AssistantAI.DataTypes;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Commands.Trees;
-using NLog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AssistantAI.Commands.Provider {
     internal class OptionsProvider : IChoiceProvider {

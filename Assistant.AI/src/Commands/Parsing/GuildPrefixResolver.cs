@@ -4,6 +4,7 @@ using AssistantAI.Services.Interfaces;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AssistantAI.Commands.Parsing;
 
@@ -29,7 +30,8 @@ public class GuildPrefixResolver : IPrefixResolver {
                 return ValueTask.FromResult(Prefix.Length);
             }
         } else {
-            SqliteDatabaseContext databaseContent = ServiceManager.GetService<SqliteDatabaseContext>();
+            using var scope = ServiceManager.ServiceProvider!.CreateScope();
+            SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
             GuildData? guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == message.Channel.Guild.Id);
             guildData ??= new GuildData();

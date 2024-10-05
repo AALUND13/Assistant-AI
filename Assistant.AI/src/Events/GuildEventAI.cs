@@ -5,9 +5,11 @@ using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using OpenAI.Chat;
+using System.Collections.Concurrent;
 using System.Text;
 using Timer = System.Timers.Timer;
 
@@ -31,6 +33,7 @@ public record struct ChannelTimerInfo(int Amount, Timer Timer);
 // The main class for the AI event.
 public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+    private readonly static ConcurrentDictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
     private readonly IServiceProvider serviceProvider;
 
@@ -42,9 +45,10 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly DiscordClient client;
     private readonly ToolsFunctions<ToolTrigger> toolsFunctions;
 
-    private readonly Dictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
-    public GuildEvent(IServiceProvider serviceProvider) {
+    private readonly SqliteDatabaseContext databaseContext;
+
+    public GuildEvent(IServiceProvider serviceProvider, SqliteDatabaseContext databaseContext) {
         this.serviceProvider = serviceProvider;
 
         logger.Info("Initializing GuildEvent...");
@@ -52,6 +56,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
         filterServices = serviceProvider.GetServices<IFilterService>().ToList();
+
+        this.databaseContext = databaseContext;
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
@@ -72,20 +78,20 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
         logger.Debug("Checking if message should be ignored...");
 
-        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
+        GuildData? guildData = databaseContext.GuildDataSet
+            .Include(guild => guild.Options)
+            .FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id);
 
-        // Retrieve guild data from the database
-        GuildData? guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id);
         if(guildData == null) {
             logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild.Id);
-            guildData = new GuildData(); // Assign default value if no result is found
+            guildData = new GuildData();
         }
 
         // Retrieve user data from the database
-        UserData? userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
+        UserData? userData = databaseContext.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
         if(userData == null) {
             logger.Warn("No user data found for User ID: {0}, using default.", eventArgs.Author.Id);
-            userData = new UserData(); // Assign default value if no result is found
+            userData = new UserData();
         }
 
         bool shouldIgnore = eventArgs.Author.IsBot
@@ -151,22 +157,27 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Channel.Id));
         }
 
-        await SaveMessagesToDatabase();
+        SaveMessagesToDatabase();
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {
-        if(!channelTypingTimer.TryGetValue(channel.Id, out var channelTimerInfo))
-            return;
+        channelTypingTimer.AddOrUpdate(channel.Id, key => new ChannelTimerInfo(0, null), (key, current) =>
+        {
+            var newAmount = current.Amount - 1;
+            if(newAmount <= 0) {
+                logger.Info("Typing timer removed for channel {0}.", channel.Id);
+                current.Timer?.Stop();
+                current.Timer?.Dispose();
+                return new ChannelTimerInfo(0, current.Timer);
+            }
+            return new ChannelTimerInfo(newAmount, current.Timer);
+        });
 
-        channelTimerInfo.Amount--;
-
-        if(channelTimerInfo.Amount == 0) {
-            channelTimerInfo.Timer.Stop();
-            channelTimerInfo.Timer.Dispose();
-            channelTypingTimer.Remove(channel.Id);
-            logger.Info("Typing timer removed for channel {0}.", channel.Id);
+        if(channelTypingTimer[channel.Id].Amount <= 0) {
+            channelTypingTimer.TryRemove(channel.Id, out var _);
         }
     }
+
 
     private async Task AddTypingTimerForChannel(DiscordChannel channel) {
         var channelTimer = new Timer(5000);

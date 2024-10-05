@@ -64,18 +64,16 @@ public partial class GuildEvent {
     }
 
     private void LoadMessagesFromDatabase() {
-        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
-
-        Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet
+        Dictionary<ulong, ChannelData> channels = databaseContext.ChannelDataSet
             .Include(channel => channel.ChatMessages)
             .ThenInclude(msg => msg.ToolCalls)
             .ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
 
-        Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet
+        Dictionary<ulong, GuildData> guilds = databaseContext.GuildDataSet
             .Include(guild => guild.GuildMemory)
             .ToDictionary(guild => (ulong)guild.GuildId, guild => guild);
 
-        Dictionary<ulong, UserData> users = databaseContent.UserDataSet
+        Dictionary<ulong, UserData> users = databaseContext.UserDataSet
             .Include(user => user.UserMemory)
             .ToDictionary(user => (ulong)user.UserId, user => user);
 
@@ -109,11 +107,9 @@ public partial class GuildEvent {
 
     private void SaveMessagesToDatabase() {
         lock(saveLock) {
-            var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
-
             logger.Info("Saving 'ChatMessages' to the database.");
             foreach(ulong channelID in ChatMessages.Keys) {
-                ChannelData? channel = databaseContent.ChannelDataSet
+                ChannelData? channel = databaseContext.ChannelDataSet
                     .Include(c => c.ChatMessages)
                     .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
 
@@ -124,7 +120,7 @@ public partial class GuildEvent {
                         ChannelId = (long)channelID,
                         ChatMessages = serializedChatMessages
                     };
-                    databaseContent.ChannelDataSet.Add(channel);
+                    databaseContext.ChannelDataSet.Add(channel);
                 } else {
                     channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
                 }
@@ -132,7 +128,7 @@ public partial class GuildEvent {
 
             logger.Info("Saving 'GuildMemory' to the database.");
             foreach(ulong guildID in GuildMemory.Keys) {
-                GuildData? guild = databaseContent.GuildDataSet
+                GuildData? guild = databaseContext.GuildDataSet
                     .Include(g => g.GuildMemory)
                     .FirstOrDefault(g => (ulong)g.GuildId == guildID);
 
@@ -146,7 +142,7 @@ public partial class GuildEvent {
                         GuildId = (long)guildID,
                         GuildMemory = serializedGuildMemory,
                     };
-                    databaseContent.GuildDataSet.Add(guild);
+                    databaseContext.GuildDataSet.Add(guild);
                 } else {
                     guild.GuildMemory = serializedGuildMemory;
                 }
@@ -154,7 +150,7 @@ public partial class GuildEvent {
 
             logger.Info("Saving 'UserMemory' to the database.");
             foreach(ulong userID in UserMemory.Keys) {
-                UserData? user = databaseContent.UserDataSet
+                UserData? user = databaseContext.UserDataSet
                     .Include(u => u.UserMemory)
                     .FirstOrDefault(u => (ulong)u.UserId == userID);
 
@@ -168,13 +164,13 @@ public partial class GuildEvent {
                         UserId = (long)userID,
                         UserMemory = serializedUserMemory,
                     };
-                    databaseContent.UserDataSet.Add(user);
+                    databaseContext.UserDataSet.Add(user);
                 } else {
                     user.UserMemory = serializedUserMemory;
                 }
             }
 
-            databaseContent.SaveChanges();
+            databaseContext.SaveChanges();
             logger.Info("Successfully saved all data to the database.");
         }
     }
