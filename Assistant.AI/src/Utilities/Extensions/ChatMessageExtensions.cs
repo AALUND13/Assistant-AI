@@ -40,7 +40,8 @@ public static class ChatMessageExtensions {
 
     public static ChatMessage Deserialize(this ChannelChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];
-        messageContentParts.Add(ChatMessageContentPart.CreateTextPart(chatMessageData.Text));
+        if(chatMessageData.Text != null)
+            messageContentParts.Add(ChatMessageContentPart.CreateTextPart(chatMessageData.Text));
 
         List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
             .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.ToolID, toolCalls.FunctionName, BinaryData.FromString(toolCalls.FunctionArguments)))?
