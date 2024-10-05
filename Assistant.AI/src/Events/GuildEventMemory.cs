@@ -105,74 +105,78 @@ public partial class GuildEvent {
         logger.Info("Successfully loaded all data from the database.");
     }
 
-    private async Task SaveMessagesToDatabase() {
-        var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
-        
-        logger.Info("Saving 'ChatMessages' to the database.");
-        foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData? channel = await databaseContent.ChannelDataSet
-                .Include(c => c.ChatMessages)
-                .FirstOrDefaultAsync(c => (ulong)c.ChannelId == channelID);
+    private readonly object saveLock = new();
 
-            var serializedChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+    private void SaveMessagesToDatabase() {
+        lock(saveLock) {
+            var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-            if(channel == null) {
-                channel = new ChannelData {
-                    ChannelId = (long)channelID,
-                    ChatMessages = serializedChatMessages
-                };
-                await databaseContent.ChannelDataSet.AddAsync(channel);
-            } else {
-                channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+            logger.Info("Saving 'ChatMessages' to the database.");
+            foreach(ulong channelID in ChatMessages.Keys) {
+                ChannelData? channel = databaseContent.ChannelDataSet
+                    .Include(c => c.ChatMessages)
+                    .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
+
+                var serializedChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+
+                if(channel == null) {
+                    channel = new ChannelData {
+                        ChannelId = (long)channelID,
+                        ChatMessages = serializedChatMessages
+                    };
+                    databaseContent.ChannelDataSet.Add(channel);
+                } else {
+                    channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
+                }
             }
-        }
 
-        logger.Info("Saving 'GuildMemory' to the database.");
-        foreach(ulong guildID in GuildMemory.Keys) {
-            GuildData? guild = await databaseContent.GuildDataSet
-                .Include(g => g.GuildMemory)
-                .FirstOrDefaultAsync(g => (ulong)g.GuildId == guildID);
+            logger.Info("Saving 'GuildMemory' to the database.");
+            foreach(ulong guildID in GuildMemory.Keys) {
+                GuildData? guild = databaseContent.GuildDataSet
+                    .Include(g => g.GuildMemory)
+                    .FirstOrDefault(g => (ulong)g.GuildId == guildID);
 
-            var serializedGuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { 
-                Key = memory.Key, 
-                Value = memory.Value,
-            }).ToList();
-            
-            if(guild == null) {
-                guild = new GuildData {
-                    GuildId = (long)guildID,
-                    GuildMemory = serializedGuildMemory,
-                };
-                await databaseContent.GuildDataSet.AddAsync(guild);
-            } else {
-                guild.GuildMemory = serializedGuildMemory;
+                var serializedGuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() {
+                    Key = memory.Key,
+                    Value = memory.Value,
+                }).ToList();
+
+                if(guild == null) {
+                    guild = new GuildData {
+                        GuildId = (long)guildID,
+                        GuildMemory = serializedGuildMemory,
+                    };
+                    databaseContent.GuildDataSet.Add(guild);
+                } else {
+                    guild.GuildMemory = serializedGuildMemory;
+                }
             }
-        }
 
-        logger.Info("Saving 'UserMemory' to the database.");
-        foreach(ulong userID in UserMemory.Keys) {
-            UserData? user = await databaseContent.UserDataSet
-                .Include(u => u.UserMemory)
-                .FirstOrDefaultAsync(u => (ulong)u.UserId == userID);
+            logger.Info("Saving 'UserMemory' to the database.");
+            foreach(ulong userID in UserMemory.Keys) {
+                UserData? user = databaseContent.UserDataSet
+                    .Include(u => u.UserMemory)
+                    .FirstOrDefault(u => (ulong)u.UserId == userID);
 
-            var serializedUserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { 
-                Key = memory.Key, 
-                Value = memory.Value
-            }).ToList();
+                var serializedUserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() {
+                    Key = memory.Key,
+                    Value = memory.Value
+                }).ToList();
 
-            if(user == null) {
-                user = new UserData {
-                    UserId = (long)userID,
-                    UserMemory = serializedUserMemory,
-                };
-                await databaseContent.UserDataSet.AddAsync(user);
-            } else {
-                user.UserMemory = serializedUserMemory;
+                if(user == null) {
+                    user = new UserData {
+                        UserId = (long)userID,
+                        UserMemory = serializedUserMemory,
+                    };
+                    databaseContent.UserDataSet.Add(user);
+                } else {
+                    user.UserMemory = serializedUserMemory;
+                }
             }
-        }
 
-        await databaseContent.SaveChangesAsync();
-        logger.Info("Successfully saved all data to the database.");
+            databaseContent.SaveChanges();
+            logger.Info("Successfully saved all data to the database.");
+        }
     }
 
     private Dictionary<ulong, List<ChannelChatMessageData>> SerializeChatMessages() {
