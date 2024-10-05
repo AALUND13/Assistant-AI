@@ -13,7 +13,19 @@ using Timer = System.Timers.Timer;
 
 namespace AssistantAI.Events;
 
-public record ToolTrigger(DiscordGuild? Guild, DiscordChannel? Channel, DiscordUser? User, string? Message);
+public class ToolTrigger : BaseOption {
+    public DiscordGuild? Guild { get; init; }
+    public DiscordChannel? Channel { get; init; }
+    public DiscordUser? User { get; init; }
+    public string? Message { get; init; }
+
+    public ToolTrigger(DiscordGuild? guild, DiscordChannel? channel, DiscordUser? user, string message) {
+        Guild = guild;
+        Channel = channel;
+        User = user;
+        Message = message;
+    }
+}
 public record struct ChannelTimerInfo(int Amount, Timer Timer);
 
 // The main class for the AI event.

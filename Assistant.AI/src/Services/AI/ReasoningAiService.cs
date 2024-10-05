@@ -27,11 +27,11 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     }
 
     public async Task<List<ChatMessage>> PromptAsync<Option>(
-        List<ChatMessage> additionalMessages, 
-        SystemChatMessage systemMessage, 
-        ToolsFunctions<Option> toolsFunctions, 
+        List<ChatMessage> additionalMessages,
+        SystemChatMessage systemMessage,
+        ToolsFunctions<Option> toolsFunctions,
         Option option
-    ) {
+    ) where Option : BaseOption {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
         string userMessage = additionalMessages.Last().GetTextMessagePart().Text;
 
@@ -50,7 +50,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         ChatCompletion chatCompletion;
         try {
             chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
-        } catch (Exception e) {
+        } catch(Exception e) {
             logger.Error(e, "Failed to generate response for message: {UserMessage}", userMessage);
             return [ChatMessage.CreateAssistantMessage("Failed to generate response. Please try again.")];
         }
@@ -62,13 +62,12 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     }
 
     private async Task<List<ChatMessage>> HandleRespone<Option>(
-        ChatCompletion chatCompletion, 
-        List<ChatMessage> additionalMessages, 
-        SystemChatMessage systemMessage, 
+        ChatCompletion chatCompletion,
+        List<ChatMessage> additionalMessages,
+        SystemChatMessage systemMessage,
         ToolsFunctions<Option> toolsFunctions,
         Option option
-        ) 
-    {
+        ) where Option : BaseOption {
         var returnMessages = new List<ChatMessage>();
         var messages = new List<ChatMessage>(additionalMessages);
 
@@ -78,12 +77,19 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning?.Response));
                 break;
             case ChatFinishReason.ToolCalls:
+                if (option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
+                    returnMessages.Add(ChatMessage.CreateAssistantMessage("Tool recursion limit reached. Please try again."));
+                    return returnMessages;
+                }
+
                 var assistantChatMessage = new AssistantChatMessage(chatCompletion);
                 returnMessages.Add(assistantChatMessage);
-                
+
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
                     logger.Info("Calling tool function: {FunctionName}", toolCall.FunctionName);
+                    option.ToolCallsRecursionCount++;
+
                     string result = toolsFunctions.CallToolFunction(toolCall, option)?.ToString() ?? "Command succeeded.";
                     returnMessages.Add(ChatMessage.CreateToolMessage(toolCall.Id, result));
                 }
