@@ -1,15 +1,17 @@
-﻿using AssistantAI.Commands.Provider;
+﻿using AssistantAI.Attributes;
+using AssistantAI.Commands.Provider;
 using AssistantAI.ContextChecks;
 using AssistantAI.DataTypes;
 using AssistantAI.Services;
-using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
+using Microsoft.EntityFrameworkCore;
 using NLog;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text;
 
 namespace AssistantAI.Commands;
@@ -40,14 +42,25 @@ public class OptionsCommands {
     [RequireGuild()]
     [Cooldown(5)]
     public static ValueTask GetOptions(CommandContext ctx) {
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        GuildData guildData = database.Data.GetOrDefaultGuild(ctx.Guild!.Id);
+        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
 
-        object?[] options = typeof(GuildOptions).GetFields().Select(x => x.GetValue(guildData.Options)).ToArray();
-        string[] optionNames = typeof(GuildOptions).GetFields().Select(x => x.Name).ToArray();
+        GuildData? guildData = database.GuildDataSet.FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+        guildData ??= new GuildData();
+
+        object?[] options = typeof(GuildOptions)
+            .GetProperties()
+            .Where(x => x.GetCustomAttribute<IgnoreAttribute>() == null)
+            .Select(x => x.GetValue(guildData.Options))
+            .ToArray();
+
+        string[] optionNames = typeof(GuildOptions)
+            .GetProperties()
+            .Where(x => x.GetCustomAttribute<IgnoreAttribute>() == null)
+            .Select(x => x.Name)
+            .ToArray();
 
         var embed = new DiscordEmbedBuilder()
-            .WithTitle($"Options [{ctx.Guild.Name}]")
+            .WithTitle($"Options [{ctx.Guild!.Name}]")
             .WithColor(DiscordColor.Gold);
 
         var optionsBuilder = new StringBuilder();
@@ -67,10 +80,22 @@ public class OptionsCommands {
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
     [Cooldown(5)]
     public static ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
-        IDatabaseService<Data> database = ServiceManager.GetService<IDatabaseService<Data>>();
-        GuildData guildData = database.Data.GetOrDefaultGuild(ctx.Guild!.Id);
+        SqliteDatabaseContext database = ServiceManager.GetService<SqliteDatabaseContext>();
 
-        Type? optionType = typeof(GuildOptions).GetFields().First(x => x.Name == options).FieldType;
+        GuildData? guildData = database.GuildDataSet
+            .Include(g => g.Options)
+            .FirstOrDefault(g => (ulong)g.GuildId == ctx.Guild!.Id);
+
+        bool guildExist = guildData != null;
+        guildData ??= new GuildData() {
+            GuildId = (long)ctx.Guild!.Id,
+        };
+
+        Type? optionType = typeof(GuildOptions)
+            .GetProperties()
+            .Where(x => x.GetCustomAttribute<IgnoreAttribute>() == null)
+            .First(x => x.Name == options).PropertyType;
+
         if(optionType == null) {
             return ctx.ResponeTryEphemeral("No option found with that name.", true);
         }
@@ -86,8 +111,13 @@ public class OptionsCommands {
             return ctx.ResponeTryEphemeral("Invalid value.", true);
         }
 
-        guildData.Options.GetType().GetField(options)!.SetValue(guildData.Options, returnValue);
-        database.SaveDatabase();
+        guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, returnValue);
+
+        if(!guildExist)
+            database.GuildDataSet.Add(guildData);
+
+        database.SaveChanges();
+
 
         return ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{returnValue}`.", true);
     }

@@ -29,8 +29,10 @@ public class GuildPrefixResolver : IPrefixResolver {
                 return ValueTask.FromResult(Prefix.Length);
             }
         } else {
-            IDatabaseService<Data> databaseService = ServiceManager.GetService<IDatabaseService<Data>>();
-            GuildData guildData = databaseService.Data.GetOrDefaultGuild(message.Channel.Guild.Id);
+            SqliteDatabaseContext databaseContent = ServiceManager.GetService<SqliteDatabaseContext>();
+
+            GuildData? guildData = databaseContent.GuildDataSet.FirstOrDefault(guild => (ulong)guild.GuildId == message.Channel.Guild.Id);
+            guildData ??= new GuildData();
 
             if(string.IsNullOrWhiteSpace(guildData.Options.Prefix)) {
                 return ValueTask.FromResult(-1);
