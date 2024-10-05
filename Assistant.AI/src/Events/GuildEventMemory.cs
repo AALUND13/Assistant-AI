@@ -105,14 +105,14 @@ public partial class GuildEvent {
         logger.Info("Successfully loaded all data from the database.");
     }
 
-    private void SaveMessagesToDatabase() {
+    private async Task SaveMessagesToDatabase() {
         var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
         
         logger.Info("Saving 'ChatMessages' to the database.");
         foreach(ulong channelID in ChatMessages.Keys) {
-            ChannelData? channel = databaseContent.ChannelDataSet
+            ChannelData? channel = await databaseContent.ChannelDataSet
                 .Include(c => c.ChatMessages)
-                .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
+                .FirstOrDefaultAsync(c => (ulong)c.ChannelId == channelID);
 
             var serializedChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
 
@@ -121,7 +121,7 @@ public partial class GuildEvent {
                     ChannelId = (long)channelID,
                     ChatMessages = serializedChatMessages
                 };
-                databaseContent.ChannelDataSet.Add(channel);
+                await databaseContent.ChannelDataSet.AddAsync(channel);
             } else {
                 channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
             }
@@ -129,9 +129,9 @@ public partial class GuildEvent {
 
         logger.Info("Saving 'GuildMemory' to the database.");
         foreach(ulong guildID in GuildMemory.Keys) {
-            GuildData? guild = databaseContent.GuildDataSet
+            GuildData? guild = await databaseContent.GuildDataSet
                 .Include(g => g.GuildMemory)
-                .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+                .FirstOrDefaultAsync(g => (ulong)g.GuildId == guildID);
 
             var serializedGuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() { 
                 Key = memory.Key, 
@@ -143,7 +143,7 @@ public partial class GuildEvent {
                     GuildId = (long)guildID,
                     GuildMemory = serializedGuildMemory,
                 };
-                databaseContent.GuildDataSet.Add(guild);
+                await databaseContent.GuildDataSet.AddAsync(guild);
             } else {
                 guild.GuildMemory = serializedGuildMemory;
             }
@@ -151,9 +151,9 @@ public partial class GuildEvent {
 
         logger.Info("Saving 'UserMemory' to the database.");
         foreach(ulong userID in UserMemory.Keys) {
-            UserData? user = databaseContent.UserDataSet
+            UserData? user = await databaseContent.UserDataSet
                 .Include(u => u.UserMemory)
-                .FirstOrDefault(u => (ulong)u.UserId == userID);
+                .FirstOrDefaultAsync(u => (ulong)u.UserId == userID);
 
             var serializedUserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() { 
                 Key = memory.Key, 
@@ -165,13 +165,13 @@ public partial class GuildEvent {
                     UserId = (long)userID,
                     UserMemory = serializedUserMemory,
                 };
-                databaseContent.UserDataSet.Add(user);
+                await databaseContent.UserDataSet.AddAsync(user);
             } else {
                 user.UserMemory = serializedUserMemory;
             }
         }
 
-        databaseContent.SaveChanges();
+        await databaseContent.SaveChangesAsync();
         logger.Info("Successfully saved all data to the database.");
     }
 

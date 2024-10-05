@@ -151,8 +151,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Channel.Id));
         }
 
-        SaveMessagesToDatabase();
-        logger.Info("Messages saved to database.");
+        await SaveMessagesToDatabase();
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {
