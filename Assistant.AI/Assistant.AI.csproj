@@ -9,15 +9,6 @@
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="src\Commands\**" />
-    <Compile Remove="src\ContextChecks\**" />
-    <EmbeddedResource Remove="src\Commands\**" />
-    <EmbeddedResource Remove="src\ContextChecks\**" />
-    <None Remove="src\Commands\**" />
-    <None Remove="src\ContextChecks\**" />
-  </ItemGroup>
-
 	<ItemGroup>
 		<None Include="../.gitignore" />
 		<None Include="../README.md" />

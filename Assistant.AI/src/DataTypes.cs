@@ -1,4 +1,5 @@
-﻿using OpenAI.Chat;
+﻿using AssistantAI.Attributes;
+using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -94,11 +95,17 @@ public class GuildUserData {
 
 
 public class GuildOptions {
-    [Key] public long GuildOptionsId { get; set; }
+    [Key, Ignore] public long GuildOptionsId { get; set; }
 
     public bool Enabled { get; set; } = true;
 
     public string Prefix { get; set; } = "a!";
+
+    [ForeignKey("GuildData"), Ignore] public long GuildDataId { get; set; }
+
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [Ignore] public GuildData GuildData { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
 
 public class GuildData {

@@ -1,10 +1,13 @@
-﻿using AssistantAI.Services.AI;
+﻿using AssistantAI.Commands.Parsing;
+using AssistantAI.ContextChecks;
+using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.EventArgs;
 using DSharpPlus.Commands.Exceptions;
 using DSharpPlus.Commands.Processors.SlashCommands;
+using DSharpPlus.Commands.Processors.TextCommands;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
@@ -82,15 +85,15 @@ public static class ServiceManager {
                 extension.AddCommands(Assembly.GetExecutingAssembly());
 
                 SlashCommandProcessor slashCommandProcessor = new(new());
-                //TextCommandProcessor textCommandProcessor = new(new() {
-                //    PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
-                //});
+                TextCommandProcessor textCommandProcessor = new(new() {
+                    PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
+                });
 
                 extension.CommandErrored += CommandErrorHandler;
 
-                extension.AddProcessors(slashCommandProcessor/*, textCommandProcessor*/);
+                extension.AddProcessors(slashCommandProcessor, textCommandProcessor);
 
-                //extension.AddCheck<CooldownCheck>();
+                extension.AddCheck<CooldownCheck>();
             },
             new CommandsConfiguration() {
                 RegisterDefaultCommandProcessors = false,

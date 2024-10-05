@@ -68,6 +68,7 @@ public partial class GuildEvent {
 
         Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet
             .Include(channel => channel.ChatMessages)
+            .ThenInclude(msg => msg.ToolCalls)
             .ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
 
         Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet
@@ -78,13 +79,14 @@ public partial class GuildEvent {
             .Include(user => user.UserMemory)
             .ToDictionary(user => (ulong)user.UserId, user => user);
 
-
+        logger.Info("Loading 'ChatMessages' from the database.");
         foreach(ulong channelID in channels.Keys) {
             ChannelData channelData = channels[channelID];
 
             ChatMessages.Add(channelID, channelData.ChatMessages.Select(msg => msg.Deserialize()).ToList());
         }
 
+        logger.Info("Loading 'GuildMemory' from the database.");
         foreach(ulong guildID in guilds.Keys) {
             GuildData guild = guilds[guildID];
 
@@ -92,18 +94,21 @@ public partial class GuildEvent {
                 new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
 
+        logger.Info("Loading 'UserMemory' from the database.");
         foreach(ulong userID in users.Keys) {
             UserData user = users[userID];
 
             UserMemory.Add(userID, user.UserMemory.Select(memory =>
                 new KeyValuePair<string, string>(memory.Key, memory.Value)).ToDictionary());
         }
+
+        logger.Info("Successfully loaded all data from the database.");
     }
 
     private void SaveMessagesToDatabase() {
         var databaseContent = serviceProvider.GetRequiredService<SqliteDatabaseContext>();
         
-        // Save the chat messages to the database.
+        logger.Info("Saving 'ChatMessages' to the database.");
         foreach(ulong channelID in ChatMessages.Keys) {
             ChannelData? channel = databaseContent.ChannelDataSet
                 .Include(c => c.ChatMessages)
@@ -119,11 +124,10 @@ public partial class GuildEvent {
                 databaseContent.ChannelDataSet.Add(channel);
             } else {
                 channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
-                databaseContent.ChannelDataSet.Update(channel);
             }
         }
 
-        // Save the guild memory to the database.
+        logger.Info("Saving 'GuildMemory' to the database.");
         foreach(ulong guildID in GuildMemory.Keys) {
             GuildData? guild = databaseContent.GuildDataSet
                 .Include(g => g.GuildMemory)
@@ -142,11 +146,10 @@ public partial class GuildEvent {
                 databaseContent.GuildDataSet.Add(guild);
             } else {
                 guild.GuildMemory = serializedGuildMemory;
-                databaseContent.GuildDataSet.Update(guild);
             }
         }
 
-        // Save the user memory to the database.
+        logger.Info("Saving 'UserMemory' to the database.");
         foreach(ulong userID in UserMemory.Keys) {
             UserData? user = databaseContent.UserDataSet
                 .Include(u => u.UserMemory)
@@ -165,11 +168,11 @@ public partial class GuildEvent {
                 databaseContent.UserDataSet.Add(user);
             } else {
                 user.UserMemory = serializedUserMemory;
-                databaseContent.UserDataSet.Update(user);
             }
         }
 
         databaseContent.SaveChanges();
+        logger.Info("Successfully saved all data to the database.");
     }
 
     private Dictionary<ulong, List<ChannelChatMessageData>> SerializeChatMessages() {

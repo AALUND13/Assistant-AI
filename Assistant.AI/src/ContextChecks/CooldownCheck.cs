@@ -18,21 +18,21 @@ public class CooldownAttribute : ContextCheckAttribute {
 
 public class CooldownCheck : IContextCheck<CooldownAttribute> {
     private const string ErrorMessage = "You are on cooldown. Please wait {0} before using this command again.";
-    private readonly static SqliteDatabaseContext databaseContent = ServiceManager.GetService<SqliteDatabaseContext>();
+
+    private readonly static Dictionary<ulong, Dictionary<string, long>> commandCooldown = [];
 
     public ValueTask<string?> ExecuteCheckAsync(CooldownAttribute attribute, CommandContext context) {
-        UserData userData = databaseContent.UserDataSet.FirstOrDefault(User => (ulong)User.Id == context.User.Id);
 
-        double cooldown = userData.CommandCooldowns.GetOrAdd(context.Command.FullName, 0);
+        var userCommandCooldown = commandCooldown.GetValueOrDefault(context.User.Id, []);
+
+        double cooldown = userCommandCooldown.GetOrAdd(context.Command.FullName, 0);
         double timeLeft = cooldown - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
 
         if(timeLeft > 0) {
             return ValueTask.FromResult<string?>(string.Format(ErrorMessage, $"<t:{(uint)cooldown}:R>"));
         } else {
-            userData.CommandCooldowns[context.Command.FullName] = DateTimeOffset.UtcNow.Add(attribute.Cooldown).ToUnixTimeSeconds();
-            databaseContent.Data.Users[context.User.Id] = userData;
-            databaseContent.SaveDatabase();
+            userCommandCooldown[context.Command.FullName] = DateTimeOffset.UtcNow.Add(attribute.Cooldown).ToUnixTimeSeconds();
 
             return ValueTask.FromResult<string?>(null);
         }
