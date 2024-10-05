@@ -6,7 +6,7 @@ namespace AssistantAI;
 
 class Program {
     static async Task Main() {
-        LogManager.Configuration = new NLogConfig().Configuration;
+        LogManager.Configuration = new NLog.Config.XmlLoggingConfiguration("nlog.config");
         Logger logger = LogManager.GetCurrentClassLogger();
 
         AppDomain.CurrentDomain.UnhandledException += (sender, err) => {
