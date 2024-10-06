@@ -1,4 +1,4 @@
-﻿using AssistantAI.Attributes;
+﻿using AssistantAI.AiModule.Attributes;
 using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;

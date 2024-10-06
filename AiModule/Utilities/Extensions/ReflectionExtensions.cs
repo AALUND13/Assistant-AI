@@ -1,10 +1,10 @@
-﻿using AssistantAI.Attributes;
+﻿using AssistantAI.AiModule.Attributes;
 using Newtonsoft.Json.Schema;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace AssistantAI.Utilities.Extension;
+namespace AssistantAI.AiModule.Utilities.Extension;
 
 public class SchemaOptions {
     public bool AddDefaultDescription { get; set; } = true;

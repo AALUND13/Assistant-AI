@@ -1,22 +1,25 @@
-﻿using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities.Extension;
+﻿using AssistantAI.AiModule.Services.Interfaces;
+using AssistantAI.AiModule.Utilities.Extension;
+using AssistantAI.AiModule.Utilities.Extensions;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using NLog;
 using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
 
-namespace AssistantAI.Services.AI;
+namespace AssistantAI.AiModule.Services.Default;
 
 public readonly record struct Decision([property: Required] string Explanation, [property: Required] bool IsApproved);
 
-public class ReplyDecisionService : IAiResponseService<bool> {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
+public class DecisionAiService : IAiResponseService<bool> {
     private static string ReasoningJsonSchema => typeof(Decision).GetJsonSchemaFromType(new SchemaOptions() { AddDefaultDescription = false }).ToString();
 
-    private readonly ChatClient openAIClient;
+    private readonly ChatClient chatClient;
+    private readonly ILogger<DecisionAiService> logger;
 
-    public ReplyDecisionService(IConfigService configService) {
-        openAIClient = new ChatClient("gpt-4o-mini", configService.Config.OPENAI_KEY);
+
+    public DecisionAiService(ChatClient chatClient, ILogger<DecisionAiService> logger) {
+        this.chatClient = chatClient;
+        this.logger = logger;
     }
 
 
@@ -35,14 +38,14 @@ public class ReplyDecisionService : IAiResponseService<bool> {
 
         ChatCompletion chatCompletion;
         try {
-            chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+            chatCompletion = await chatClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
         } catch(Exception e) {
-            logger.Error(e, "Failed to generate response for message: {UserMessage}", userMessage);
+            logger.LogError(e, "Failed to generate response for message: {UserMessage}", userMessage);
             return false;
         }
         var decision = HandleRespone(chatCompletion);
 
-        logger.Info("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", userMessage, decision.IsApproved, decision.Explanation);
+        logger.LogInformation("Made decision for message: {UserMessage}, with response: {Decision}, explanation: {Explanation}", userMessage, decision.IsApproved, decision.Explanation);
 
         return decision.IsApproved;
     }

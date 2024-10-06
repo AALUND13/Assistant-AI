@@ -1,4 +1,5 @@
-﻿using AssistantAI.DataTypes;
+﻿using AssistantAI.AiModule.Utilities.Extensions;
+using AssistantAI.DataTypes;
 using OpenAI.Chat;
 using System.Reflection;
 
@@ -33,10 +34,6 @@ public static class ChatMessageExtensions {
         };
     }
 
-
-    public static ChatMessageContentPart GetTextMessagePart(this ChatMessage chatMessage) {
-        return chatMessage.Content.First(ctx => ctx is ChatMessageContentPart part && part.Text != null);
-    }
 
     public static ChatMessage Deserialize(this ChannelChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];

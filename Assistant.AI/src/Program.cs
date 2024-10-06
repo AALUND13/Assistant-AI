@@ -1,5 +1,6 @@
 ﻿using AssistantAI.Services;
 using AssistantAI.Utilities;
+using Microsoft.Extensions.Options;
 using NLog;
 
 namespace AssistantAI;
@@ -15,7 +16,7 @@ class Program {
             Console.Write("A fatal error occurred. Press any key to exit.");
             Console.ReadKey();
         };
-
+        
         ServiceManager.InitializeServices();
 
         //Config.LoadConfig();

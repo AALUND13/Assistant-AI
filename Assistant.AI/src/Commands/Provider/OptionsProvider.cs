@@ -1,4 +1,4 @@
-﻿using AssistantAI.Attributes;
+﻿using AssistantAI.AiModule.Attributes;
 using AssistantAI.DataTypes;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Commands.Trees;

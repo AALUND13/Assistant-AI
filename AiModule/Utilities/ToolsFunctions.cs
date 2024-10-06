@@ -1,11 +1,11 @@
-﻿using AssistantAI.Utilities.Extension;
+﻿using AssistantAI.AiModule.Utilities.Extension;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
 using OpenAI.Chat;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace AssistantAI.Utilities;
+namespace AssistantAI.AiModule.Utilities;
 
 public class ToolsFunctionsBuilder<T> {
     public readonly Dictionary<Delegate, JSchema> ToolFunctions = new Dictionary<Delegate, JSchema>();

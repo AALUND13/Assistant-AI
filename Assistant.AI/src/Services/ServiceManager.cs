@@ -1,6 +1,7 @@
-﻿using AssistantAI.Commands.Parsing;
+﻿using AssistantAI.AiModule.Services.Default;
+using AssistantAI.AiModule.Services.Extensions;
+using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
-using AssistantAI.Services.AI;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus;
 using DSharpPlus.Commands;
@@ -74,6 +75,7 @@ public static class ServiceManager {
         services.AddDbContext<SqliteDatabaseContext>(options =>
             options.UseSqlite("Data Source=database.db"));
 
+        services.AddDefaultAiServices(configService.Config.OPENAI_KEY);
 
         logger.Debug("Initializing Discord client services...");
         services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);
@@ -103,10 +105,6 @@ public static class ServiceManager {
         logger.Info("Commands initialized.");
 
         services.AddSingleton<IFilterService, AIFilterService>();
-
-        services.AddSingleton<IAiResponseToolService<List<ChatMessage>>, ReasoningAiService>();
-        services.AddSingleton<IAiResponseService<bool>, ReplyDecisionService>();
-
 
         logger.Debug("Initializing event handlers...");
         ConfigureEventHandlers();

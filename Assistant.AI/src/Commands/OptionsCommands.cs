@@ -1,4 +1,4 @@
-﻿using AssistantAI.Attributes;
+﻿using AssistantAI.AiModule.Attributes;
 using AssistantAI.Commands.Provider;
 using AssistantAI.ContextChecks;
 using AssistantAI.DataTypes;

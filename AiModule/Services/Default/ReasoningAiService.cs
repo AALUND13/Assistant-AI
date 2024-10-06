@@ -1,29 +1,28 @@
-﻿using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities;
-using AssistantAI.Utilities.Extension;
+﻿using AssistantAI.AiModule.Services.Interfaces;
+using AssistantAI.AiModule.Utilities;
+using AssistantAI.AiModule.Utilities.Extension;
+using AssistantAI.AiModule.Utilities.Extensions;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using NLog;
 using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
 
-namespace AssistantAI.Services;
+namespace AssistantAI.AiModule.Services.Default;
 
 public readonly record struct Step([property: Required] string Content);
 public readonly record struct Reasoning([property: Required] Step[] Steps, [property: Required] string Response);
 
 public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     private static string ReasoningJsonSchema => typeof(Reasoning).GetJsonSchemaFromType(new SchemaOptions() { AddDefaultDescription = false }).ToString();
 
-    private readonly IConfigService configService;
-    private readonly ChatClient openAIClient;
+    private readonly ChatClient chatClient;
+    private readonly ILogger<ReasoningAiService> logger;
 
 
+    public ReasoningAiService(ChatClient chatClient, ILogger<ReasoningAiService> logger) {
+        this.chatClient = chatClient;
+        this.logger = logger;
 
-    public ReasoningAiService(IConfigService configService) {
-        this.configService = configService;
-
-        openAIClient = new ChatClient("gpt-4o-mini", this.configService.Config.OPENAI_KEY);
     }
 
     public async Task<List<ChatMessage>> PromptAsync<Option>(
@@ -49,14 +48,14 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
         ChatCompletion chatCompletion;
         try {
-            chatCompletion = await openAIClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
+            chatCompletion = await chatClient.CompleteChatAsync(buildMessages, chatCompletionOptions);
         } catch(Exception e) {
-            logger.Error(e, "Failed to generate response for message: {UserMessage}", userMessage);
+            logger.LogError(e, "Failed to generate response for message: {UserMessage}", userMessage);
             return [ChatMessage.CreateAssistantMessage("Failed to generate response. Please try again.")];
         }
         var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions, option);
 
-        logger.Info("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().GetTextMessagePart().Text);
+        logger.LogInformation("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().GetTextMessagePart().Text);
 
         return returnMessages;
     }
@@ -77,7 +76,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning?.Response));
                 break;
             case ChatFinishReason.ToolCalls:
-                if (option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
+                if(option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
                     returnMessages.Add(ChatMessage.CreateAssistantMessage("Tool recursion limit reached. Please try again."));
                     return returnMessages;
                 }
@@ -87,7 +86,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
-                    logger.Info("Calling tool function: {FunctionName}", toolCall.FunctionName);
+                    logger.LogInformation("Calling tool function: {FunctionName}", toolCall.FunctionName);
                     option.ToolCallsRecursionCount++;
 
                     string result = toolsFunctions.CallToolFunction(toolCall, option)?.ToString() ?? "Command succeeded.";
