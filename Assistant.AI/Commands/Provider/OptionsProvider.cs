@@ -1,10 +1,10 @@
 ﻿using AssistantAI.AiModule.Attributes;
-using AssistantAI.DataTypes;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Commands.Trees;
 using System.Reflection;
 
-namespace AssistantAI.Commands.Provider {
+namespace AssistantAI.Commands.Provider
+{
     internal class OptionsProvider : IChoiceProvider {
         public ValueTask<IReadOnlyDictionary<string, object>> ProvideAsync(CommandParameter parameter) {
             string[] optionNames = typeof(GuildOptions)

@@ -1,7 +1,6 @@
 ﻿using AssistantAI.ContextChecks;
-using AssistantAI.DataTypes;
 using AssistantAI.Services;
-using AssistantAI.Utilities.Extension;
+using AssistantAI.Utilities.Extensions;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Entities;

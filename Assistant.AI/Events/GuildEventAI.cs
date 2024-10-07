@@ -2,9 +2,8 @@
 using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extensions;
-using AssistantAI.DataTypes;
 using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities.Extension;
+using AssistantAI.Utilities.Extensions;
 using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;

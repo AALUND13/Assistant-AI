@@ -3,15 +3,17 @@ using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AssistantAI.DataTypes;
+namespace AssistantAI;
 
-public enum AIResponsePermission {
+public enum AIResponsePermission
+{
     None,
     Ignored,
     Blacklisted,
 }
 
-public class ChatToolCallData {
+public class ChatToolCallData
+{
     [Key] public int Id { get; set; }
 
     public required string ToolID { get; set; }
@@ -24,7 +26,8 @@ public class ChatToolCallData {
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
 
-public class ChannelChatMessageData {
+public class ChannelChatMessageData
+{
     [Key] public int Id { get; set; }
 
     public required ChatMessageRole Role { get; set; }
@@ -39,14 +42,16 @@ public class ChannelChatMessageData {
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
 
-public class ChannelData {
+public class ChannelData
+{
     [Key] public long ChannelId { get; set; } // Primary key for SQLite
 
     public List<ChannelChatMessageData> ChatMessages { get; set; } = [];
 }
 
 
-public class UserMemoryItem {
+public class UserMemoryItem
+{
     [Key] public int Id { get; set; }
 
     public required string Key { get; set; }
@@ -59,7 +64,8 @@ public class UserMemoryItem {
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable
 }
 
-public class GuildMemoryItem {
+public class GuildMemoryItem
+{
     [Key] public int Id { get; set; }
 
     public required string Key { get; set; }
@@ -73,7 +79,8 @@ public class GuildMemoryItem {
 }
 
 
-public class UserData {
+public class UserData
+{
     [Key] public long UserId { get; set; }
 
     public List<UserMemoryItem> UserMemory { get; set; } = [];
@@ -81,7 +88,8 @@ public class UserData {
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
 }
 
-public class GuildUserData {
+public class GuildUserData
+{
     [Key] public long GuildUserId { get; set; }
 
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
@@ -94,7 +102,8 @@ public class GuildUserData {
 }
 
 
-public class GuildOptions {
+public class GuildOptions
+{
     [Key, Ignore] public long GuildOptionsId { get; set; }
 
     public bool Enabled { get; set; } = true;
@@ -108,7 +117,8 @@ public class GuildOptions {
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 }
 
-public class GuildData {
+public class GuildData
+{
     [Key] public long GuildId { get; set; }
 
     public List<GuildUserData> GuildUsers { get; set; } = [];

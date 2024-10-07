@@ -1,8 +1,7 @@
 ﻿using AssistantAI.AiModule.Services;
 using AssistantAI.AiModule.Utilities;
-using AssistantAI.DataTypes;
 using AssistantAI.Services;
-using AssistantAI.Utilities.Extension;
+using AssistantAI.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;

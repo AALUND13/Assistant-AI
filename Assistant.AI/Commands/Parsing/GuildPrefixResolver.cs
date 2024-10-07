@@ -1,5 +1,4 @@
-﻿using AssistantAI.DataTypes;
-using AssistantAI.Services;
+﻿using AssistantAI.Services;
 using AssistantAI.Services.Interfaces;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.Processors.TextCommands.Parsing;

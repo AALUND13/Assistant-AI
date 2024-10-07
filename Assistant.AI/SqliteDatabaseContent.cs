@@ -1,5 +1,4 @@
-﻿using AssistantAI.DataTypes;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace AssistantAI;

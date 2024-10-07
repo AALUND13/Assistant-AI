@@ -1,5 +1,5 @@
 ﻿using AssistantAI.ContextChecks;
-using AssistantAI.Utilities.Extension;
+using AssistantAI.Utilities.Extensions;
 using DSharpPlus.Commands;
 using System.ComponentModel;
 
