@@ -25,7 +25,11 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
     }
 
-    public async Task<List<ChatMessage>> PromptAsync<Option>(
+    public Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
+        return PromptAsync(additionalMessages, systemMessage, new ToolsFunctions<BaseOption>(new ToolsFunctionsBuilder<BaseOption>()), new BaseOption());
+    }
+
+public async Task<List<ChatMessage>> PromptAsync<Option>(
         List<ChatMessage> additionalMessages,
         SystemChatMessage systemMessage,
         ToolsFunctions<Option> toolsFunctions,

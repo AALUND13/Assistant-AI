@@ -1,4 +1,5 @@
 ﻿using AssistantAI.AiModule.Services.Interfaces;
+using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extension;
 using AssistantAI.AiModule.Utilities.Extensions;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,6 @@ public class DecisionAiService : IAiResponseService<bool> {
         this.chatClient = chatClient;
         this.logger = logger;
     }
-
 
     public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
         var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
