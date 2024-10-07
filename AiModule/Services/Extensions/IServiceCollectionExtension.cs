@@ -9,7 +9,9 @@ namespace AssistantAI.AiModule.Services.Extensions {
             services.AddSingleton<IAiResponseToolService<List<ChatMessage>>, ReasoningAiService>();
             services.AddSingleton<IAiResponseService<bool>, DecisionAiService>();
 
-            services.AddSingleton(new ChatClient("gpt-4o-mini", openAiApiKey));
+            services.Configure<OpenAiConfiguration>(config => {
+                config.ApiKey = openAiApiKey;
+            });
 
             return services;
         }

@@ -1,44 +1,44 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
 
-namespace AssistantAI.AiModule.Utilities {
-    public class EventQueue<T> : IEnumerable<T> where T : notnull {
-        public readonly int MaxItems;
+namespace AssistantAI.AiModule.Utilities;
 
-        public readonly ConcurrentQueue<T> Items = [];
+public class EventQueue<T> : IEnumerable<T> where T : notnull {
+    public int MaxItems;
 
-        public event Action<T>? OnItemAdded;
-        public event Action<T>? OnItemRemoved;
+    public readonly ConcurrentQueue<T> Items = [];
 
-        public EventQueue(int maxItems) {
-            MaxItems = maxItems;
-        }
+    public event Action<T>? OnItemAdded;
+    public event Action<T>? OnItemRemoved;
 
-        public void AddItem(T item) {
-            if(Items.Count >= MaxItems) {
-                Items.TryDequeue(out T? removeItem);
-                if(removeItem != null) {
-                    OnItemRemoved?.Invoke(removeItem);
-                }
-            }
+    public EventQueue(int maxItems) {
+        MaxItems = maxItems;
+    }
 
-            Items.Enqueue(item);
-            OnItemAdded?.Invoke(item);
-        }
-
-        public void RemoveItem() {
+    public void AddItem(T item) {
+        while(Items.Count >= MaxItems) {
             Items.TryDequeue(out T? removeItem);
             if(removeItem != null) {
                 OnItemRemoved?.Invoke(removeItem);
             }
         }
 
-        public IEnumerator<T> GetEnumerator() {
-            return Items.GetEnumerator();
-        }
+        Items.Enqueue(item);
+        OnItemAdded?.Invoke(item);
+    }
 
-        IEnumerator IEnumerable.GetEnumerator() {
-            return GetEnumerator();
+    public void RemoveItem() {
+        Items.TryDequeue(out T? removeItem);
+        if(removeItem != null) {
+            OnItemRemoved?.Invoke(removeItem);
         }
+    }
+
+    public IEnumerator<T> GetEnumerator() {
+        return Items.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return GetEnumerator();
     }
 }

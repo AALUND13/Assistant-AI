@@ -1,8 +1,8 @@
 ﻿using AssistantAI.AiModule.Services.Interfaces;
-using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extension;
 using AssistantAI.AiModule.Utilities.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using OpenAI.Chat;
 using System.ComponentModel.DataAnnotations;
@@ -18,8 +18,12 @@ public class DecisionAiService : IAiResponseService<bool> {
     private readonly ILogger<DecisionAiService> logger;
 
 
-    public DecisionAiService(ChatClient chatClient, ILogger<DecisionAiService> logger) {
-        this.chatClient = chatClient;
+    public DecisionAiService(IOptions<OpenAiConfiguration> config, ILogger<DecisionAiService> logger) {
+        if(config.Value.ApiKey == null) {
+            throw new ArgumentNullException("OpenAI API key is required");
+        }
+
+        chatClient = new ChatClient("gpt-4o-mini", config.Value.ApiKey);
         this.logger = logger;
     }
 

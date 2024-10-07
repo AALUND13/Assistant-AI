@@ -3,7 +3,6 @@ using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extensions;
 using AssistantAI.DataTypes;
 using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extension;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -164,8 +163,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {
-        channelTypingTimer.AddOrUpdate(channel.Id, key => new ChannelTimerInfo(0, null), (key, current) =>
-        {
+        channelTypingTimer.AddOrUpdate(channel.Id, key => new ChannelTimerInfo(0, null), (key, current) => {
             var newAmount = current.Amount - 1;
             if(newAmount <= 0) {
                 logger.Info("Typing timer removed for channel {0}.", channel.Id);
