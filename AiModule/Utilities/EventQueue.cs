@@ -4,13 +4,14 @@ using System.Collections.Concurrent;
 namespace AssistantAI.AiModule.Utilities;
 
 public class EventQueue<T> : IEnumerable<T> where T : notnull {
-    public int MaxItems;
+    public int MaxItems = 100;
 
     public readonly ConcurrentQueue<T> Items = [];
 
     public event Action<T>? OnItemAdded;
     public event Action<T>? OnItemRemoved;
 
+    public EventQueue() { }
     public EventQueue(int maxItems) {
         MaxItems = maxItems;
     }

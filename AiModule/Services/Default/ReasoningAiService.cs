@@ -88,8 +88,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                     return returnMessages;
                 }
 
-                var assistantChatMessage = new AssistantChatMessage(chatCompletion);
-                returnMessages.Add(assistantChatMessage);
+                returnMessages.Add(ChatMessage.CreateAssistantMessage(chatCompletion));
 
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {

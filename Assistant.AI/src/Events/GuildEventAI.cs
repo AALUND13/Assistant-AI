@@ -1,4 +1,5 @@
-﻿using AssistantAI.AiModule.Services.Interfaces;
+﻿using AssistantAI.AiModule.Services;
+using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extensions;
 using AssistantAI.DataTypes;
@@ -37,37 +38,33 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly static Logger logger = LogManager.GetCurrentClassLogger();
     private readonly static ConcurrentDictionary<ulong, ChannelTimerInfo> channelTypingTimer = [];
 
-    private readonly IServiceProvider serviceProvider;
-
-    private readonly IAiResponseToolService<List<ChatMessage>> aiResponseService;
     private readonly IAiResponseService<bool> aiDecisionService;
 
-    private readonly List<IFilterService> filterServices;
+    private readonly IServiceProvider serviceProvider;
 
     private readonly DiscordClient client;
     private readonly ToolsFunctions<ToolTrigger> toolsFunctions;
 
+    private readonly SqliteDatabaseContext databaseContent;
 
-    private readonly SqliteDatabaseContext databaseContext;
+    private readonly static ConcurrentDictionary<ulong, AIChatClientService> ChatClientServices = [];
 
     public GuildEvent(IServiceProvider serviceProvider, SqliteDatabaseContext databaseContext) {
+        logger.Info("Initializing GuildEvent...");
         this.serviceProvider = serviceProvider;
 
-        logger.Info("Initializing GuildEvent...");
-        aiResponseService = serviceProvider.GetRequiredService<IAiResponseToolService<List<ChatMessage>>>();
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
-        filterServices = serviceProvider.GetServices<IFilterService>().ToList();
 
-        this.databaseContext = databaseContext;
+        this.databaseContent = databaseContext;
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
-            .WithToolFunction(AddOrOverwriteGuildMemory)
-            .WithToolFunction(AddOrOverwriteUserMemory)
-            .WithToolFunction(RemoveGuildMemory)
-            .WithToolFunction(RemoveUserMemory)
-            .WithToolFunction(GetUserMemory)
+            //.WithToolFunction(AddOrOverwriteGuildMemory)
+            //.WithToolFunction(AddOrOverwriteUserMemory)
+            //.WithToolFunction(RemoveGuildMemory)
+            //.WithToolFunction(RemoveUserMemory)
+            //.WithToolFunction(GetUserMemory)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
@@ -80,7 +77,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
         logger.Debug("Checking if message should be ignored...");
 
-        GuildData? guildData = databaseContext.GuildDataSet
+        GuildData? guildData = databaseContent.GuildDataSet
             .Include(guild => guild.Options)
             .FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id);
 
@@ -90,7 +87,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         }
 
         // Retrieve user data from the database
-        UserData? userData = databaseContext.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
+        UserData? userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
         if(userData == null) {
             logger.Warn("No user data found for User ID: {0}, using default.", eventArgs.Author.Id);
             userData = new UserData();
@@ -119,19 +116,25 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             return;
         }
 
-        ChatMessages.TryAdd(eventArgs.Channel.Id, []);
-
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
-        HandleChatMessage(userChatMessage, eventArgs.Channel.Id);
+        if(ChatClientServices.TryAdd(eventArgs.Channel.Id, new AIChatClientService(serviceProvider))) {
+            AddEventForChannel(eventArgs.Channel.Id);
+        }
+
+
+        ChatClientServices[eventArgs.Channel.Id].ChatMessages.AddItem(userChatMessage);
+
+        SystemChatMessage replyDecisionPrompt = ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message));
+        SystemChatMessage responePrompt = ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message));
 
         SystemChatMessage userMemory = GenerateUserMemorySystemMessage(eventArgs.Author.Id);
         SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
 
-        List<ChatMessage> messages = new(ChatMessages[eventArgs.Channel.Id]);
-        messages.Insert(0, userMemory);
-        messages.Insert(0, guildMemory);
+        List<ChatMessage> messages = [userMemory, guildMemory];
 
-        bool shouldReply = await aiDecisionService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message)));
+
+
+        bool shouldReply = await aiDecisionService.PromptAsync([replyDecisionPrompt, ..messages, ..ChatClientServices[eventArgs.Channel.Id].ChatMessages]);
 
         if(shouldReply) {
             logger.Info("Bot decided to reply. Initiating response...");
@@ -139,28 +142,13 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
             ToolTrigger toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
 
-            //TODO: Swap to 'AiChatService'
-            List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions, toolTrigger);
-            foreach(var message in assistantChatMessages) {
-                var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
-                if(textPartIndex == -1) continue;
-
-                string textPart = message.Content[textPartIndex].Text!;
-                foreach(var filterService in filterServices) {
-                    textPart = await filterService.FilterAsync(textPart);
-                }
-
-                message.Content[textPartIndex] = ChatMessageContentPart.CreateTextPart(textPart);
-            }
+            List<ChatMessage> responseMessages = await ChatClientServices[eventArgs.Channel.Id]
+                .PromptAsync(toolsFunctions, toolTrigger, [responePrompt, ..messages]);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
-            await eventArgs.Message.RespondAsync(assistantChatMessages.Last().GetTextMessagePart().Text);
+            await eventArgs.Message.RespondAsync(responseMessages.Last().GetTextMessagePart().Text);
             logger.Info("Bot response sent to channel {0}.", eventArgs.Channel.Id);
-
-            assistantChatMessages.ForEach(msg => HandleChatMessage(msg, eventArgs.Channel.Id));
         }
-
-        SaveMessagesToDatabase();
     }
 
     private void RemoveTypingTimerForChannel(DiscordChannel channel) {

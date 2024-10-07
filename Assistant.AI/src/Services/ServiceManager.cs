@@ -1,5 +1,6 @@
 ﻿using AssistantAI.AiModule.Services.Default;
 using AssistantAI.AiModule.Services.Extensions;
+using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
 using AssistantAI.Services.Interfaces;

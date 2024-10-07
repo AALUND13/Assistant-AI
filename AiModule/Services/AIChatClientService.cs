@@ -19,9 +19,12 @@ public class AIChatClientService {
 
     private readonly IAiResponseService<List<ChatMessage>> AiService;
     private readonly IEnumerable<IFilterService> filterServices = [];
-
+    
     public AIChatClientService(IServiceProvider serviceProvider) {
-        AiService = serviceProvider.GetRequiredService<IAiResponseService<List<ChatMessage>>>();
+        AiService = serviceProvider.GetService<IAiResponseToolService<List<ChatMessage>>>() 
+            ?? serviceProvider.GetService<IAiResponseService<List<ChatMessage>>>()
+            ?? throw new InvalidOperationException("No AI service found");
+
         filterServices = serviceProvider.GetServices<IFilterService>();
     }
 
@@ -44,7 +47,7 @@ public class AIChatClientService {
         Option option,
         List<ChatMessage>? additionalMessages = null
     ) where Option : BaseOption {
-        if(AiService.GetType().GetInterface(nameof(IAiResponseToolService<List<ChatMessage>>)) == null) {
+        if(!AiService.GetType().GetInterfaces().Contains(typeof(IAiResponseToolService<List<ChatMessage>>))) {
             throw new InvalidOperationException($"{AiService.GetType().Name} does not implement {nameof(IAiResponseToolService<List<ChatMessage>>)}");
         }
 
@@ -54,8 +57,8 @@ public class AIChatClientService {
         var chatMessages = await ((IAiResponseToolService<List<ChatMessage>>)AiService).PromptAsync(messages, toolsFunctions, option);
         chatMessages = await FitlerMessages(chatMessages);
 
-        foreach(var item in chatMessages) {
-            ChatMessages.AddItem(item);
+        foreach(var message in chatMessages) {
+            ChatMessages.AddItem(message);
         }
 
         return chatMessages;
@@ -65,7 +68,10 @@ public class AIChatClientService {
         List<ChatMessage> filteredMessages = new();
         foreach(var message in messages) {
             var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
-            if(textPartIndex == -1) continue;
+            if(textPartIndex == -1) {
+                filteredMessages.Add(message);
+                continue;
+            }
 
             string textPart = message.Content[textPartIndex].Text!;
             foreach(var filterService in filterServices) {

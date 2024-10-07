@@ -22,58 +22,60 @@ public partial class GuildEvent {
         return $"[{stringBuilder}]";
     }
 
-    [Description("Add or overwrite a key in the user memory.")]
-    string AddOrOverwriteUserMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
-        if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
-            UserMemory[toolTrigger.User.Id] = [];
+    //TODO: Make these tools methods with the new chat message system.
 
-        UserMemory[toolTrigger.User.Id][key] = value;
-        return $"User memory key {key} has been added or overwritten with value {value}";
-    }
-    
-    [Description("Add or overwrite a key in the guild memory.")]
-    string AddOrOverwriteGuildMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
-        if(toolTrigger.Guild! == null!)
-            throw new ArgumentException("You must be in a guild to use this command");
-        else if(!GuildMemory.ContainsKey(toolTrigger.Guild.Id))
-            GuildMemory[toolTrigger.Guild.Id] = [];
+    //[Description("Add or overwrite a key in the user memory.")]
+    //string AddOrOverwriteUserMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
+    //    if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
+    //        UserMemory[toolTrigger.User.Id] = [];
 
-        GuildMemory[toolTrigger.Guild.Id][key] = value;
-        return $"Guild memory key {key} has been added or overwritten with value {value}";
-    }
+    //    UserMemory[toolTrigger.User.Id][key] = value;
+    //    return $"User memory key {key} has been added or overwritten with value {value}";
+    //}
 
-    [Description("Remove a key from the user memory.")]
-    string RemoveUserMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
-        if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
-            UserMemory[toolTrigger.User.Id] = [];
+    //[Description("Add or overwrite a key in the guild memory.")]
+    //string AddOrOverwriteGuildMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
+    //    if(toolTrigger.Guild! == null!)
+    //        throw new ArgumentException("You must be in a guild to use this command");
+    //    else if(!GuildMemory.ContainsKey(toolTrigger.Guild.Id))
+    //        GuildMemory[toolTrigger.Guild.Id] = [];
 
-        if(UserMemory[toolTrigger.User.Id].Remove(key))
-            return $"User memory key {key} has been removed";
-        return $"User memory key {key} was not found";
-    }
+    //    GuildMemory[toolTrigger.Guild.Id][key] = value;
+    //    return $"Guild memory key {key} has been added or overwritten with value {value}";
+    //}
 
-    [Description("Remove a key from the guild memory.")]
-    string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
-        if(toolTrigger.Guild! == null!)
-            throw new ArgumentException("You must be in a guild to use this command");
-        else if(!GuildMemory.ContainsKey(toolTrigger.Guild.Id))
-            GuildMemory[toolTrigger.Guild.Id] = [];
+    //[Description("Remove a key from the user memory.")]
+    //string RemoveUserMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
+    //    if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
+    //        UserMemory[toolTrigger.User.Id] = [];
 
-        if(GuildMemory[toolTrigger.Guild.Id].Remove(key))
-            return $"Guild memory key {key} has been removed";
-        return $"Guild memory key {key} was not found";
-    }
+    //    if(UserMemory[toolTrigger.User.Id].Remove(key))
+    //        return $"User memory key {key} has been removed";
+    //    return $"User memory key {key} was not found";
+    //}
 
-    [Description("Get the user memory.")]
-    string GetUserMemory([Description("The user ID to get memory from.")] ulong userID) {
-        if(!UserMemory.ContainsKey(userID))
-            return "User memory is empty";
+    //[Description("Remove a key from the guild memory.")]
+    //string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
+    //    if(toolTrigger.Guild! == null!)
+    //        throw new ArgumentException("You must be in a guild to use this command");
+    //    else if(!GuildMemory.ContainsKey(toolTrigger.Guild.Id))
+    //        GuildMemory[toolTrigger.Guild.Id] = [];
 
-        var stringBuilder = new StringBuilder();
-        stringBuilder.Append("User memory: ");
-        foreach(var (key, value) in UserMemory[userID])
-            stringBuilder.Append($"{key}: {value}, ");
+    //    if(GuildMemory[toolTrigger.Guild.Id].Remove(key))
+    //        return $"Guild memory key {key} has been removed";
+    //    return $"Guild memory key {key} was not found";
+    //}
 
-        return stringBuilder.ToString();
-    }
+    //[Description("Get the user memory.")]
+    //string GetUserMemory([Description("The user ID to get memory from.")] ulong userID) {
+    //    if(!UserMemory.ContainsKey(userID))
+    //        return "User memory is empty";
+
+    //    var stringBuilder = new StringBuilder();
+    //    stringBuilder.Append("User memory: ");
+    //    foreach(var (key, value) in UserMemory[userID])
+    //        stringBuilder.Append($"{key}: {value}, ");
+
+    //    return stringBuilder.ToString();
+    //}
 }
