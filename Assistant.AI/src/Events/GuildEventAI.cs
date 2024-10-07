@@ -139,6 +139,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
             ToolTrigger toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
 
+            //TODO: Swap to 'AiChatService'
             List<ChatMessage> assistantChatMessages = await aiResponseService.PromptAsync(messages, ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message)), toolsFunctions, toolTrigger);
             foreach(var message in assistantChatMessages) {
                 var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);

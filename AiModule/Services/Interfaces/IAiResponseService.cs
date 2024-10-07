@@ -14,9 +14,9 @@ public class BaseOption {
 
 
 public interface IAiResponseService<T> {
-    Task<T> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage);
+    Task<T> PromptAsync(List<ChatMessage> messages);
 }
 
 public interface IAiResponseToolService<T> : IAiResponseService<T> {
-    Task<T> PromptAsync<Option>(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage, ToolsFunctions<Option> toolsFunctions, Option option) where Option : BaseOption;
+    Task<T> PromptAsync<Option>(List<ChatMessage> messages, ToolsFunctions<Option> toolsFunctions, Option option) where Option : BaseOption;
 }

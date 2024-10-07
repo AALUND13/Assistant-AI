@@ -5,17 +5,14 @@ using OpenAI.Chat;
 
 namespace AssistantAI.AiModule.Services;
 
-public class AIChatClientService
-{
+public class AIChatClientService {
     public EventQueue<ChatMessage> ChatMessages = new(100);
 
-    public event Action<ChatMessage>? OnMessageAdded
-    {
+    public event Action<ChatMessage>? OnMessageAdded {
         add { ChatMessages.OnItemAdded += value; }
         remove { ChatMessages.OnItemAdded -= value; }
     }
-    public event Action<ChatMessage>? OnMessageRemoved
-    {
+    public event Action<ChatMessage>? OnMessageRemoved {
         add { ChatMessages.OnItemRemoved += value; }
         remove { ChatMessages.OnItemRemoved -= value; }
     }
@@ -23,22 +20,19 @@ public class AIChatClientService
     private readonly IAiResponseService<List<ChatMessage>> AiService;
     private readonly IEnumerable<IFilterService> filterServices = [];
 
-    public AIChatClientService(IServiceProvider serviceProvider)
-    {
+    public AIChatClientService(IServiceProvider serviceProvider) {
         AiService = serviceProvider.GetRequiredService<IAiResponseService<List<ChatMessage>>>();
         filterServices = serviceProvider.GetServices<IFilterService>();
     }
 
-    public async Task<List<ChatMessage>> PromptAsync(SystemChatMessage systemMessage, List<ChatMessage>? additionalMessages = null)
-    {
-        List<ChatMessage> messages = new List<ChatMessage>(additionalMessages ?? []);
+    public async Task<List<ChatMessage>> PromptAsync(List<ChatMessage>? additionalMessages = null) {
+        var messages = new List<ChatMessage>(additionalMessages ?? []);
         messages.AddRange(ChatMessages.ToList());
 
-        List<ChatMessage> chatMessages = await AiService.PromptAsync(messages, systemMessage);
-        chatMessages = await fitlerMessages(chatMessages);
+        var chatMessages = await AiService.PromptAsync(messages);
+        chatMessages = await FitlerMessages(chatMessages);
 
-        foreach (var item in chatMessages)
-        {
+        foreach(var item in chatMessages) {
             ChatMessages.AddItem(item);
         }
 
@@ -46,42 +40,35 @@ public class AIChatClientService
     }
 
     public async Task<List<ChatMessage>> PromptAsync<Option>(
-        SystemChatMessage systemMessage,
         ToolsFunctions<Option> toolsFunctions,
         Option option,
         List<ChatMessage>? additionalMessages = null
-    ) where Option : BaseOption
-    {
-        if (AiService.GetType().GetInterface(nameof(IAiResponseToolService<List<ChatMessage>>)) == null)
-        {
+    ) where Option : BaseOption {
+        if(AiService.GetType().GetInterface(nameof(IAiResponseToolService<List<ChatMessage>>)) == null) {
             throw new InvalidOperationException($"{AiService.GetType().Name} does not implement {nameof(IAiResponseToolService<List<ChatMessage>>)}");
         }
 
-        List<ChatMessage> messages = new List<ChatMessage>(additionalMessages ?? []);
+        var messages = new List<ChatMessage>(additionalMessages ?? []);
         messages.AddRange(ChatMessages.ToList());
 
-        List<ChatMessage> chatMessages = await ((IAiResponseToolService<List<ChatMessage>>)AiService).PromptAsync(messages, systemMessage, toolsFunctions, option);
-        chatMessages = await fitlerMessages(chatMessages);
+        var chatMessages = await ((IAiResponseToolService<List<ChatMessage>>)AiService).PromptAsync(messages, toolsFunctions, option);
+        chatMessages = await FitlerMessages(chatMessages);
 
-        foreach (var item in chatMessages)
-        {
+        foreach(var item in chatMessages) {
             ChatMessages.AddItem(item);
         }
 
         return chatMessages;
     }
 
-    private async Task<List<ChatMessage>> fitlerMessages(List<ChatMessage> messages)
-    {
+    private async Task<List<ChatMessage>> FitlerMessages(List<ChatMessage> messages) {
         List<ChatMessage> filteredMessages = new();
-        foreach (var message in messages)
-        {
+        foreach(var message in messages) {
             var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
-            if (textPartIndex == -1) continue;
+            if(textPartIndex == -1) continue;
 
             string textPart = message.Content[textPartIndex].Text!;
-            foreach (var filterService in filterServices)
-            {
+            foreach(var filterService in filterServices) {
                 textPart = await filterService.FilterAsync(textPart);
             }
 

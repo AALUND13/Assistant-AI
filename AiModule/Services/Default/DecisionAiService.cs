@@ -27,9 +27,9 @@ public class DecisionAiService : IAiResponseService<bool> {
         this.logger = logger;
     }
 
-    public async Task<bool> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
-        var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
-        var userMessage = additionalMessages.Last().GetTextMessagePart().Text;
+    public async Task<bool> PromptAsync(List<ChatMessage> messages) {
+        var buildMessages = messages;
+        var userMessage = messages.Last().GetTextMessagePart().Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
@@ -63,11 +63,5 @@ public class DecisionAiService : IAiResponseService<bool> {
             default:
                 return new Decision("Unable to make a decision", false);
         }
-    }
-
-    private List<ChatMessage> BuildChatMessages(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
-        var messages = new List<ChatMessage>(additionalMessages);
-        messages.Insert(0, systemMessage);
-        return messages;
     }
 }

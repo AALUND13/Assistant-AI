@@ -30,18 +30,17 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
 
     }
 
-    public Task<List<ChatMessage>> PromptAsync(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
-        return PromptAsync(additionalMessages, systemMessage, new ToolsFunctions<BaseOption>(new ToolsFunctionsBuilder<BaseOption>()), new BaseOption());
+    public Task<List<ChatMessage>> PromptAsync(List<ChatMessage> messages) {
+        return PromptAsync(messages, new ToolsFunctions<BaseOption>(new ToolsFunctionsBuilder<BaseOption>()), new BaseOption());
     }
 
     public async Task<List<ChatMessage>> PromptAsync<Option>(
-        List<ChatMessage> additionalMessages,
-        SystemChatMessage systemMessage,
+        List<ChatMessage> messages,
         ToolsFunctions<Option> toolsFunctions,
         Option option
     ) where Option : BaseOption {
-        var buildMessages = BuildChatMessages(additionalMessages, systemMessage);
-        string userMessage = additionalMessages.Last().GetTextMessagePart().Text;
+        var buildMessages = messages;
+        string userMessage = messages.Last().GetTextMessagePart().Text;
 
         var chatCompletionOptions = new ChatCompletionOptions() {
             ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
@@ -62,7 +61,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
             logger.LogError(e, "Failed to generate response for message: {UserMessage}", userMessage);
             return [ChatMessage.CreateAssistantMessage("Failed to generate response. Please try again.")];
         }
-        var returnMessages = await HandleRespone(chatCompletion, additionalMessages, systemMessage, toolsFunctions, option);
+        var returnMessages = await HandleRespone(chatCompletion, messages, toolsFunctions, option);
 
         logger.LogInformation("Generated prompt for message: {UserMessage}, with response: {AssistantMessage}", userMessage, returnMessages.Last().GetTextMessagePart().Text);
 
@@ -72,7 +71,6 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
     private async Task<List<ChatMessage>> HandleRespone<Option>(
         ChatCompletion chatCompletion,
         List<ChatMessage> additionalMessages,
-        SystemChatMessage systemMessage,
         ToolsFunctions<Option> toolsFunctions,
         Option option
         ) where Option : BaseOption {
@@ -103,7 +101,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 }
 
                 messages.AddRange(returnMessages);
-                var responeMessages = await PromptAsync(messages, systemMessage, toolsFunctions, option);
+                var responeMessages = await PromptAsync(messages, toolsFunctions, option);
 
                 returnMessages.AddRange(responeMessages);
 
@@ -114,11 +112,5 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
         }
 
         return returnMessages;
-    }
-
-    private List<ChatMessage> BuildChatMessages(List<ChatMessage> additionalMessages, SystemChatMessage systemMessage) {
-        var messages = new List<ChatMessage>(additionalMessages);
-        messages.Insert(0, systemMessage);
-        return messages;
     }
 }
