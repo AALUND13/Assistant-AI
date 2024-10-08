@@ -5,6 +5,7 @@ using AssistantAI.Utilities.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Channels;
 
@@ -12,11 +13,11 @@ namespace AssistantAI.Events;
 
 // All the data methods/properties of the GuildEvent class.
 public partial class GuildEvent {
-    public Dictionary<ulong, EventQueue<KeyValuePair<string, string>>> GuildMemory { get; init; } = [];
-    public Dictionary<ulong, EventQueue<KeyValuePair<string, string>>> UserMemory { get; init; } = [];
+    public readonly static ConcurrentDictionary<ulong, EventList<KeyValuePair<string, string>>> GuildMemory = [];
+    public readonly static ConcurrentDictionary<ulong, EventList<KeyValuePair<string, string>>> UserMemory = [];
 
     public SystemChatMessage GenerateUserMemorySystemMessage(ulong userID) {
-        EventQueue<KeyValuePair<string, string>> userMemory = UserMemory.GetValueOrDefault(userID, []);
+        EventList<KeyValuePair<string, string>> userMemory = UserMemory.GetValueOrDefault(userID, []);
 
         var stringBuilder = new StringBuilder();
         stringBuilder.Append("These are the user memory keys and values that have been stored\n");
@@ -34,7 +35,7 @@ public partial class GuildEvent {
     }
 
     public SystemChatMessage GenerateGuildMemorySystemMessage(ulong guildID) {
-        EventQueue<KeyValuePair<string, string>> guildMemory = GuildMemory.GetValueOrDefault(guildID, []);
+        EventList<KeyValuePair<string, string>> guildMemory = GuildMemory.GetValueOrDefault(guildID, []);
 
         var stringBuilder = new StringBuilder();
         stringBuilder.Append("These are the guild memory keys and values that have been stored\n");
@@ -73,12 +74,12 @@ public partial class GuildEvent {
 
             bool chatMessageNotInitialized = ChatClientServices.TryAdd(channelID, new AIChatClientService(serviceProvider));
 
-            foreach(var message in channelData.ChatMessages) {
-                var deserializedMessage = message.Deserialize();
-                ChatClientServices[channelID].ChatMessages.AddItem(deserializedMessage);
-            }
-
             if(chatMessageNotInitialized) {
+                foreach(var message in channelData.ChatMessages) {
+                    var deserializedMessage = message.Deserialize();
+                    ChatClientServices[channelID].ChatMessages.AddItem(deserializedMessage);
+                }
+
                 AddEventForMessages(channelID);
             }
         }
@@ -87,13 +88,13 @@ public partial class GuildEvent {
         foreach(ulong guildID in guilds.Keys) {
             GuildData guild = guilds[guildID];
 
-            bool memoryNotInitialized = GuildMemory.TryAdd(guildID, new EventQueue<KeyValuePair<string, string>>(50));
-
-            foreach(var memory in GuildMemory) {
-                GuildMemory.Add(guildID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
-            }
+            bool memoryNotInitialized = GuildMemory.TryAdd(guildID, new EventList<KeyValuePair<string, string>>(50));
 
             if(memoryNotInitialized) {
+                foreach(var memory in guild.GuildMemory) {
+                    GuildMemory[guildID].AddItem(new (memory.Key, memory.Value));
+                }
+
                 AddEventForGuildMemory(guildID);
             }
         }
@@ -102,13 +103,13 @@ public partial class GuildEvent {
         foreach(ulong userID in users.Keys) {
             UserData user = users[userID];
 
-            bool memoryNotInitialized = UserMemory.TryAdd(userID, new EventQueue<KeyValuePair<string, string>>(50));
-
-            foreach(var memory in UserMemory) {
-                GuildMemory.Add(userID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
-            }
+            bool memoryNotInitialized = UserMemory.TryAdd(userID, new EventList<KeyValuePair<string, string>>(50));
 
             if(memoryNotInitialized) {
+                foreach(var memory in user.UserMemory) {
+                    GuildMemory[userID].AddItem(new(memory.Key, memory.Value));
+                }
+
                 AddEventForUserMemory(userID);
             }
         }
@@ -119,7 +120,7 @@ public partial class GuildEvent {
     private readonly object saveLock = new();
 
     private void AddEventForMessages(ulong channelID) {
-        Action<ChatMessage> onChatMessageAdded = (ChatMessage chatMessage) => {
+        void onChatMessageAdded(ChatMessage chatMessage) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -135,9 +136,9 @@ public partial class GuildEvent {
 
                 databaseContent.SaveChanges();
             }
-        };
+        }
 
-        Action<ChatMessage> onChatMessageRemoved = (ChatMessage chatMessage) => {
+        void onChatMessageRemoved(ChatMessage chatMessage) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -149,11 +150,18 @@ public partial class GuildEvent {
                 if(channelData != null) {
                     channelData.ChatMessages.Remove(chatMessage.Serialize());
                     logger.Debug($"Removed ChatMessage from ChannelData: {(chatMessage.Content.Count > 0 ? chatMessage.Content[0].Text : "None")}");
+                } else {
+                    ChannelData newChannelData = new() {
+                        ChannelId = (long)channelID,
+                        ChatMessages = new List<ChannelChatMessageData> { chatMessage.Serialize() }
+                    };
+
+                    databaseContent.ChannelDataSet.Add(newChannelData);
                 }
 
                 databaseContent.SaveChanges();
             }
-        };
+        }
 
         // Subscribe the event handler
         ChatClientServices[channelID].OnMessageAdded += onChatMessageAdded;
@@ -161,7 +169,7 @@ public partial class GuildEvent {
     }
 
     private void AddEventForGuildMemory(ulong guildID) {
-        Action<KeyValuePair<string, string>> onMemoryAdded = (KeyValuePair<string, string> guildMemory) => {
+        void onMemoryAdded(KeyValuePair<string, string> guildMemory) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -178,13 +186,20 @@ public partial class GuildEvent {
 
                     guild.GuildMemory.Add(guildMemoryItem);
                     logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                } else {
+                    GuildData newGuildData = new() {
+                        GuildId = (long)guildID,
+                        GuildMemory = new List<GuildMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                    };
+
+                    databaseContent.GuildDataSet.Add(newGuildData);
                 }
 
                 databaseContent.SaveChanges();
             }
-        };
+        }
 
-        Action<KeyValuePair<string, string>> onMemoryRemoved = (KeyValuePair<string, string> guildMemory) => {
+        void onMemoryRemoved(KeyValuePair<string, string> guildMemory) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -195,22 +210,29 @@ public partial class GuildEvent {
 
                 if(guild != null) {
                     var guildMemoryItem = guild.GuildMemory.FirstOrDefault(memory => memory.Key == guildMemory.Key && memory.Value == guildMemory.Value);
-                    
+
                     if(guildMemoryItem != null) {
                         guild.GuildMemory.Remove(guildMemoryItem);
                         logger.Debug($"Removed a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
                     }
+                } else {
+                    GuildData newGuildData = new() {
+                        GuildId = (long)guildID,
+                        GuildMemory = new List<GuildMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                    };
+
+                    databaseContent.GuildDataSet.Add(newGuildData);
                 }
 
                 databaseContent.SaveChanges();
             }
-        };
-        UserMemory[guildID].OnItemAdded += onMemoryAdded;
-        UserMemory[guildID].OnItemRemoved += onMemoryRemoved;
+        }
+        GuildMemory[guildID].OnItemAdded += onMemoryAdded;
+        GuildMemory[guildID].OnItemRemoved += onMemoryRemoved;
     }
 
     private void AddEventForUserMemory(ulong userID) {
-        Action<KeyValuePair<string, string>> onMemoryAdded = (KeyValuePair<string, string> guildMemory) => {
+        void onMemoryAdded(KeyValuePair<string, string> guildMemory) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -227,13 +249,20 @@ public partial class GuildEvent {
 
                     user.UserMemory.Add(UserMemoryItem);
                     logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                } else {
+                    UserData newUser = new() {
+                        UserId = (long)userID,
+                        UserMemory = new List<UserMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                    };
+
+                    databaseContent.UserDataSet.Add(newUser);
                 }
 
                 databaseContent.SaveChanges();
             }
-        };
+        }
 
-        Action<KeyValuePair<string, string>> onMemoryRemoved = (KeyValuePair<string, string> guildMemory) => {
+        void onMemoryRemoved(KeyValuePair<string, string> guildMemory) {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
                 SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
@@ -249,11 +278,18 @@ public partial class GuildEvent {
                         user.UserMemory.Remove(guildMemoryItem);
                         logger.Debug($"Removed a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
                     }
+                } else {
+                    UserData newUser = new() {
+                        UserId = (long)userID,
+                        UserMemory = new List<UserMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                    };
+
+                    databaseContent.UserDataSet.Add(newUser);
                 }
 
                 databaseContent.SaveChanges();
             }
-        };
+        }
 
         UserMemory[userID].OnItemAdded += onMemoryAdded;
         UserMemory[userID].OnItemRemoved += onMemoryRemoved;
