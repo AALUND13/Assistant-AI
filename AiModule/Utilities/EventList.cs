@@ -3,36 +3,47 @@ using System.Collections.Concurrent;
 
 namespace AssistantAI.AiModule.Utilities;
 
-public class EventQueue<T> : IEnumerable<T> where T : notnull {
+public class EventList<T> : IEnumerable<T> where T : notnull {
     public int MaxItems = 100;
 
-    public readonly ConcurrentQueue<T> Items = [];
+    public readonly List<T> Items = [];
 
     public event Action<T>? OnItemAdded;
     public event Action<T>? OnItemRemoved;
 
-    public EventQueue() { }
-    public EventQueue(int maxItems) {
+    public EventList() { }
+    public EventList(int maxItems) {
         MaxItems = maxItems;
     }
 
     public void AddItem(T item) {
         while(Items.Count >= MaxItems) {
-            Items.TryDequeue(out T? removeItem);
-            if(removeItem != null) {
-                OnItemRemoved?.Invoke(removeItem);
-            }
+            RemoveItem();
         }
 
-        Items.Enqueue(item);
+        Items.Add(item);
         OnItemAdded?.Invoke(item);
     }
 
-    public void RemoveItem() {
-        Items.TryDequeue(out T? removeItem);
-        if(removeItem != null) {
+    public bool RemoveItem() {
+        if(Items.Count > 0) {
+            T? removeItem = Items[0];
+            Items.RemoveAt(0);
             OnItemRemoved?.Invoke(removeItem);
+            return true;
         }
+        return false;
+    }
+
+    public bool RemoveItem(T item) {
+        T? removeItem = Items.FirstOrDefault(i => i.Equals(item));
+        if(removeItem != null) {
+            Items.Remove(removeItem);
+            OnItemRemoved?.Invoke(removeItem);
+            return true;
+        }
+
+        return false;
     }
 
     public IEnumerator<T> GetEnumerator() {
