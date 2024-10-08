@@ -95,7 +95,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                     logger.LogInformation("Calling tool function: {FunctionName}", toolCall.FunctionName);
                     option.ToolCallsRecursionCount++;
 
-                    string result = toolsFunctions.CallToolFunction(toolCall, option)?.ToString() ?? "Command succeeded.";
+                    string result = (await toolsFunctions.CallToolFunction(toolCall, option))?.ToString() ?? "Command succeeded.";
                     returnMessages.Add(ChatMessage.CreateToolMessage(toolCall.Id, result));
                 }
 

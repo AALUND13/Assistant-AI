@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 
 namespace AssistantAI;
 
-public class SqliteDatabaseContext : DbContext
-{
+public class SqliteDatabaseContext : DbContext {
     public DbSet<UserData> UserDataSet { get; set; }
     public DbSet<GuildData> GuildDataSet { get; set; }
     public DbSet<ChannelData> ChannelDataSet { get; set; }

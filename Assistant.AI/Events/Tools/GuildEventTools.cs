@@ -7,9 +7,11 @@ namespace AssistantAI.Events;
 // All the tools methods of the GuildEvent class.
 public partial class GuildEvent {
     [Description("Get information about a user.")]
-    string GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
-        DiscordUser user = client.GetUserAsync(userID).Result
-            ?? throw new ArgumentException($"User with ID {userID} was not found.");
+
+    async Task<string> GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
+        DiscordUser? user = await client.GetUserAsync(userID);
+        if(user == null) //Ingore the 'CS8625: Cannot convert null literal to non-nullable reference type.' warning. I have no idea why it's there.
+            return $"User with ID {userID} was not found.";
 
         string? customActivity = user.Presence?.Activities.FirstOrDefault(activity => activity.ActivityType == DiscordActivityType.Custom)?.RichPresence.State;
 

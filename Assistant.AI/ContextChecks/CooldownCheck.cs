@@ -1,11 +1,6 @@
-﻿using AssistantAI.DataTypes;
-using AssistantAI.Services;
-using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities.Extensions;
+﻿using AssistantAI.Utilities.Extensions;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
-using NLog;
-using System;
 
 namespace AssistantAI.ContextChecks;
 

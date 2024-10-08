@@ -4,17 +4,13 @@ using System.Reflection;
 
 namespace AssistantAI.Utilities.Extensions;
 
-public static class ChatMessageExtensions
-{
-    public static ChannelChatMessageData Serialize(this ChatMessage chatMessage)
-    {
+public static class ChatMessageExtensions {
+    public static ChannelChatMessageData Serialize(this ChatMessage chatMessage) {
         var role = (ChatMessageRole)(typeof(ChatMessage).GetProperty("Role", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(chatMessage))!;
         var urls = new List<Uri>();
 
-        foreach (ChatMessageContentPart part in chatMessage.Content)
-        {
-            if (part.ImageUri != null)
-            {
+        foreach(ChatMessageContentPart part in chatMessage.Content) {
+            if(part.ImageUri != null) {
                 urls.Add(part.ImageUri);
             }
         }
@@ -22,14 +18,12 @@ public static class ChatMessageExtensions
 
 
 
-        return new ChannelChatMessageData()
-        {
+        return new ChannelChatMessageData() {
             Role = role,
             Text = chatMessage.Content is { Count: > 0 } ? chatMessage.GetTextMessagePart().Text : null,
 
             ToolCalls = chatMessage is AssistantChatMessage assistantChatMessage ? assistantChatMessage.ToolCalls
-            .Select(toolCall => new ChatToolCallData()
-            {
+            .Select(toolCall => new ChatToolCallData() {
                 ToolID = toolCall.Id,
                 FunctionName = toolCall.FunctionName,
                 FunctionArguments = toolCall.FunctionArguments.ToString()
@@ -40,18 +34,16 @@ public static class ChatMessageExtensions
     }
 
 
-    public static ChatMessage Deserialize(this ChannelChatMessageData chatMessageData)
-    {
+    public static ChatMessage Deserialize(this ChannelChatMessageData chatMessageData) {
         List<ChatMessageContentPart> messageContentParts = [];
-        if (chatMessageData.Text != null)
+        if(chatMessageData.Text != null)
             messageContentParts.Add(ChatMessageContentPart.CreateTextPart(chatMessageData.Text));
 
         List<ChatToolCall>? toolCalls = chatMessageData.ToolCalls?
             .Select(toolCalls => ChatToolCall.CreateFunctionToolCall(toolCalls.ToolID, toolCalls.FunctionName, BinaryData.FromString(toolCalls.FunctionArguments)))?
             .ToList();
 
-        ChatMessage chatMessage = chatMessageData.Role switch
-        {
+        ChatMessage chatMessage = chatMessageData.Role switch {
             ChatMessageRole.System => ChatMessage.CreateSystemMessage(messageContentParts),
             ChatMessageRole.Assistant => CreateAssistantChatMessage(toolCalls, messageContentParts.Count > 0 ? messageContentParts.Last().Text : null),
             ChatMessageRole.Tool => ChatMessage.CreateToolMessage(chatMessageData.ToolCallId, messageContentParts),
@@ -63,14 +55,10 @@ public static class ChatMessageExtensions
         return chatMessage;
     }
 
-    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content)
-    {
-        if (toolCalls != null && toolCalls.Any())
-        {
+    private static AssistantChatMessage CreateAssistantChatMessage(IEnumerable<ChatToolCall>? toolCalls, string? content) {
+        if(toolCalls != null && toolCalls.Any()) {
             return ChatMessage.CreateAssistantMessage(toolCalls);
-        }
-        else
-        {
+        } else {
             return ChatMessage.CreateAssistantMessage(content);
         }
     }

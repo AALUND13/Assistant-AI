@@ -49,7 +49,7 @@ public class ToolsFunctions<T> {
         );
     }
 
-    public object? CallToolFunction(ChatToolCall toolCall, T option) {
+    public async Task<object?> CallToolFunction(ChatToolCall toolCall, T option) {
         Delegate? method = builder.ToolFunctions.Keys.FirstOrDefault(m => m.GetMethodInfo().Name == toolCall.FunctionName);
 
         if(method == null)
@@ -73,9 +73,22 @@ public class ToolsFunctions<T> {
         }
 
         try {
-            return method.DynamicInvoke(args);
+            return await InvokeDelegateAsync(method, args);
         } catch(TargetInvocationException e) {
             return e.InnerException?.Message ?? e.Message;
         }
+    }
+
+    private static async Task<object?> InvokeDelegateAsync(Delegate method, object?[] args) {
+        var result = method.DynamicInvoke(args);
+
+        if(result is Task task) {
+            await task.ConfigureAwait(false);
+
+            if(task.GetType().IsGenericType)
+                return task.GetType().GetProperty("Result")?.GetValue(task);
+        }
+
+        return result;
     }
 }
