@@ -1,0 +1,28 @@
+﻿using AssistantAI.Services;
+using AssistantAI.Utilities;
+using Microsoft.Extensions.Options;
+using NLog;
+
+namespace AssistantAI;
+
+class Program {
+    static async Task Main() {
+        LogManager.Configuration = new NLog.Config.XmlLoggingConfiguration("nlog.config");
+        Logger logger = LogManager.GetCurrentClassLogger();
+
+        AppDomain.CurrentDomain.UnhandledException += (sender, err) => {
+            logger.Fatal(err.ExceptionObject.ToString());
+
+            Console.Write("A fatal error occurred. Press any key to exit.");
+            Console.ReadKey();
+        };
+        
+        ServiceManager.InitializeServices();
+
+        //Config.LoadConfig();
+        //await DCClient.InitializeAsync();
+
+        // Keep the bot running
+        await Task.Delay(-1);
+    }
+}
