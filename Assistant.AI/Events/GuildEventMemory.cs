@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
 using System.Text;
+using System.Threading.Channels;
 
 namespace AssistantAI.Events;
 
@@ -70,117 +71,54 @@ public partial class GuildEvent {
 
             if(ChatClientServices.ContainsKey(channelID)) continue;
 
-            bool notExists = ChatClientServices.TryAdd(channelID, new AIChatClientService(serviceProvider));
+            bool chatMessageNotInitialized = ChatClientServices.TryAdd(channelID, new AIChatClientService(serviceProvider));
 
             foreach(var message in channelData.ChatMessages) {
                 var deserializedMessage = message.Deserialize();
                 ChatClientServices[channelID].ChatMessages.AddItem(deserializedMessage);
             }
 
-            if(notExists) {
-                AddEventForChannel(channelID);
+            if(chatMessageNotInitialized) {
+                AddEventForMessages(channelID);
             }
         }
 
-        //TODO: Implement the loading of the memory 'GuildMemory' and 'UserMemory' from the database.
+        logger.Info("Loading 'GuildMemory' from the database.");
+        foreach(ulong guildID in guilds.Keys) {
+            GuildData guild = guilds[guildID];
 
-        //logger.Info("Loading 'GuildMemory' from the database.");
-        //foreach(ulong guildID in guilds.Keys) {
-        //    GuildData guild = guilds[guildID];
+            bool memoryNotInitialized = GuildMemory.TryAdd(guildID, new EventQueue<KeyValuePair<string, string>>(50));
 
-        //    foreach(var memory in GuildMemory) {
-        //        GuildMemory.Add(guildID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
-        //    }
-        //}
+            foreach(var memory in GuildMemory) {
+                GuildMemory.Add(guildID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
+            }
 
-        //logger.Info("Loading 'UserMemory' from the database.");
-        //foreach(ulong userID in users.Keys) {
-        //    UserData user = users[userID];
+            if(memoryNotInitialized) {
+                AddEventForGuildMemory(guildID);
+            }
+        }
 
-        //    foreach(var memory in UserMemory) {
-        //        GuildMemory.Add(userID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
-        //    }
-        //}
+        logger.Info("Loading 'UserMemory' from the database.");
+        foreach(ulong userID in users.Keys) {
+            UserData user = users[userID];
+
+            bool memoryNotInitialized = UserMemory.TryAdd(userID, new EventQueue<KeyValuePair<string, string>>(50));
+
+            foreach(var memory in UserMemory) {
+                GuildMemory.Add(userID, new EventQueue<KeyValuePair<string, string>>(memory.Value.MaxItems));
+            }
+
+            if(memoryNotInitialized) {
+                AddEventForUserMemory(userID);
+            }
+        }
 
         logger.Info("Successfully loaded all data from the database.");
     }
 
-    //private readonly object saveLock = new();
-
-    //private void SaveMessagesToDatabase() {
-    //    lock(saveLock) {
-    //        logger.Info("Saving 'ChatMessages' to the database.");
-    //        foreach(ulong channelID in ChatMessages.Keys) {
-    //            ChannelData? channel = databaseContext.ChannelDataSet
-    //                .Include(c => c.ChatMessages)
-    //                .FirstOrDefault(c => (ulong)c.ChannelId == channelID);
-
-    //            var serializedChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
-
-    //            if(channel == null) {
-    //                channel = new ChannelData {
-    //                    ChannelId = (long)channelID,
-    //                    ChatMessages = serializedChatMessages
-    //                };
-    //                databaseContext.ChannelDataSet.Add(channel);
-    //            } else {
-    //                channel.ChatMessages = ChatMessages[channelID].Select(msg => msg.Serialize()).ToList();
-    //            }
-    //        }
-
-    //        logger.Info("Saving 'GuildMemory' to the database.");
-    //        foreach(ulong guildID in GuildMemory.Keys) {
-    //            GuildData? guild = databaseContext.GuildDataSet
-    //                .Include(g => g.GuildMemory)
-    //                .FirstOrDefault(g => (ulong)g.GuildId == guildID);
-
-    //            var serializedGuildMemory = GuildMemory[guildID].Select(memory => new GuildMemoryItem() {
-    //                Key = memory.Key,
-    //                Value = memory.Value,
-    //            }).ToList();
-
-    //            if(guild == null) {
-    //                guild = new GuildData {
-    //                    GuildId = (long)guildID,
-    //                    GuildMemory = serializedGuildMemory,
-    //                };
-    //                databaseContext.GuildDataSet.Add(guild);
-    //            } else {
-    //                guild.GuildMemory = serializedGuildMemory;
-    //            }
-    //        }
-
-    //        logger.Info("Saving 'UserMemory' to the database.");
-    //        foreach(ulong userID in UserMemory.Keys) {
-    //            UserData? user = databaseContext.UserDataSet
-    //                .Include(u => u.UserMemory)
-    //                .FirstOrDefault(u => (ulong)u.UserId == userID);
-
-    //            var serializedUserMemory = UserMemory[userID].Select(memory => new UserMemoryItem() {
-    //                Key = memory.Key,
-    //                Value = memory.Value
-    //            }).ToList();
-
-    //            if(user == null) {
-    //                user = new UserData {
-    //                    UserId = (long)userID,
-    //                    UserMemory = serializedUserMemory,
-    //                };
-    //                databaseContext.UserDataSet.Add(user);
-    //            } else {
-    //                user.UserMemory = serializedUserMemory;
-    //            }
-    //        }
-
-    //        databaseContext.SaveChanges();
-    //        logger.Info("Successfully saved all data to the database.");
-    //    }
-    //}
-
     private readonly object saveLock = new();
 
-    // TODO: Implement the saving of the memory 'GuildMemory' and 'UserMemory' to the database.
-    private void AddEventForChannel(ulong channelID) {
+    private void AddEventForMessages(ulong channelID) {
         Action<ChatMessage> onChatMessageAdded = (ChatMessage chatMessage) => {
             lock(saveLock) {
                 using var scope = ServiceManager.ServiceProvider!.CreateScope();
@@ -220,5 +158,104 @@ public partial class GuildEvent {
         // Subscribe the event handler
         ChatClientServices[channelID].OnMessageAdded += onChatMessageAdded;
         ChatClientServices[channelID].OnMessageRemoved += onChatMessageRemoved;
+    }
+
+    private void AddEventForGuildMemory(ulong guildID) {
+        Action<KeyValuePair<string, string>> onMemoryAdded = (KeyValuePair<string, string> guildMemory) => {
+            lock(saveLock) {
+                using var scope = ServiceManager.ServiceProvider!.CreateScope();
+                SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+                GuildData? guild = databaseContent.GuildDataSet
+                    .Include(g => g.GuildMemory)
+                    .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+
+                if(guild != null) {
+                    GuildMemoryItem guildMemoryItem = new() {
+                        Key = guildMemory.Key,
+                        Value = guildMemory.Value,
+                    };
+
+                    guild.GuildMemory.Add(guildMemoryItem);
+                    logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                }
+
+                databaseContent.SaveChanges();
+            }
+        };
+
+        Action<KeyValuePair<string, string>> onMemoryRemoved = (KeyValuePair<string, string> guildMemory) => {
+            lock(saveLock) {
+                using var scope = ServiceManager.ServiceProvider!.CreateScope();
+                SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+                GuildData? guild = databaseContent.GuildDataSet
+                    .Include(g => g.GuildMemory)
+                    .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+
+                if(guild != null) {
+                    var guildMemoryItem = guild.GuildMemory.FirstOrDefault(memory => memory.Key == guildMemory.Key && memory.Value == guildMemory.Value);
+                    
+                    if(guildMemoryItem != null) {
+                        guild.GuildMemory.Remove(guildMemoryItem);
+                        logger.Debug($"Removed a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                    }
+                }
+
+                databaseContent.SaveChanges();
+            }
+        };
+        UserMemory[guildID].OnItemAdded += onMemoryAdded;
+        UserMemory[guildID].OnItemRemoved += onMemoryRemoved;
+    }
+
+    private void AddEventForUserMemory(ulong userID) {
+        Action<KeyValuePair<string, string>> onMemoryAdded = (KeyValuePair<string, string> guildMemory) => {
+            lock(saveLock) {
+                using var scope = ServiceManager.ServiceProvider!.CreateScope();
+                SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+                UserData? user = databaseContent.UserDataSet
+                    .Include(g => g.UserMemory)
+                    .FirstOrDefault(g => (ulong)g.UserId == userID);
+
+                if(user != null) {
+                    UserMemoryItem UserMemoryItem = new() {
+                        Key = guildMemory.Key,
+                        Value = guildMemory.Value,
+                    };
+
+                    user.UserMemory.Add(UserMemoryItem);
+                    logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                }
+
+                databaseContent.SaveChanges();
+            }
+        };
+
+        Action<KeyValuePair<string, string>> onMemoryRemoved = (KeyValuePair<string, string> guildMemory) => {
+            lock(saveLock) {
+                using var scope = ServiceManager.ServiceProvider!.CreateScope();
+                SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+                UserData? user = databaseContent.UserDataSet
+                    .Include(g => g.UserMemory)
+                    .FirstOrDefault(g => (ulong)g.UserId == userID);
+
+                if(user != null) {
+                    var guildMemoryItem = user.UserMemory.FirstOrDefault(memory => memory.Key == guildMemory.Key && memory.Value == guildMemory.Value);
+
+                    if(guildMemoryItem != null) {
+                        user.UserMemory.Remove(guildMemoryItem);
+                        logger.Debug($"Removed a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
+                    }
+                }
+
+                databaseContent.SaveChanges();
+            }
+        };
+
+        UserMemory[userID].OnItemAdded += onMemoryAdded;
+        UserMemory[userID].OnItemRemoved += onMemoryRemoved;
     }
 }

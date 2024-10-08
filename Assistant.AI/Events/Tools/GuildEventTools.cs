@@ -1,4 +1,5 @@
 ﻿using DSharpPlus.Entities;
+using DSharpPlus.Exceptions;
 using System.ComponentModel;
 using System.Text;
 
@@ -9,9 +10,12 @@ public partial class GuildEvent {
     [Description("Get information about a user.")]
 
     async Task<string> GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
-        DiscordUser? user = await client.GetUserAsync(userID);
-        if(user == null) //Ingore the 'CS8625: Cannot convert null literal to non-nullable reference type.' warning. I have no idea why it's there.
-            return $"User with ID {userID} was not found.";
+        DiscordUser? user;
+        try {
+            user = await client.GetUserAsync(userID);
+        } catch(BadRequestException e) {
+            return $"User with ID {userID} was not found";
+        }
 
         string? customActivity = user.Presence?.Activities.FirstOrDefault(activity => activity.ActivityType == DiscordActivityType.Custom)?.RichPresence.State;
 

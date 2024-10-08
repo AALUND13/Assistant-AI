@@ -46,7 +46,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
     private readonly SqliteDatabaseContext databaseContent;
 
-    private readonly static ConcurrentDictionary<ulong, AIChatClientService> ChatClientServices = [];
+    private readonly static Dictionary<ulong, AIChatClientService> ChatClientServices = [];
 
     public GuildEvent(IServiceProvider serviceProvider, SqliteDatabaseContext databaseContext) {
         logger.Info("Initializing GuildEvent...");
@@ -117,7 +117,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         var userChatMessage = ChatMessage.CreateUserMessage(HandleDiscordMessage(eventArgs.Message));
         if(ChatClientServices.TryAdd(eventArgs.Channel.Id, new AIChatClientService(serviceProvider))) {
-            AddEventForChannel(eventArgs.Channel.Id);
+            AddEventForMessages(eventArgs.Channel.Id);
         }
 
 

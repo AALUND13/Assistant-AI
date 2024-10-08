@@ -6,7 +6,7 @@ using OpenAI.Chat;
 namespace AssistantAI.AiModule.Services;
 
 public class AIChatClientService {
-    public EventQueue<ChatMessage> ChatMessages = new(100);
+    public EventQueue<ChatMessage> ChatMessages = new(50);
 
     public event Action<ChatMessage>? OnMessageAdded {
         add { ChatMessages.OnItemAdded += value; }
