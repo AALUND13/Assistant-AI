@@ -46,7 +46,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
     private readonly SqliteDatabaseContext databaseContent;
 
-    private readonly static Dictionary<ulong, AIChatClientService> ChatClientServices = [];
+    private readonly static ConcurrentDictionary<ulong, AIChatClientService> ChatClientServices = [];
 
     public GuildEvent(IServiceProvider serviceProvider, SqliteDatabaseContext databaseContext) {
         logger.Info("Initializing GuildEvent...");
@@ -59,11 +59,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
-            //.WithToolFunction(AddOrOverwriteGuildMemory)
-            //.WithToolFunction(AddOrOverwriteUserMemory)
-            //.WithToolFunction(RemoveGuildMemory)
-            //.WithToolFunction(RemoveUserMemory)
-            //.WithToolFunction(GetUserMemory)
+            .WithToolFunction(AddOrOverwriteGuildMemory)
+            .WithToolFunction(AddOrOverwriteUserMemory)
+            .WithToolFunction(RemoveGuildMemory)
+            .WithToolFunction(RemoveUserMemory)
+            .WithToolFunction(GetUserMemory)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
