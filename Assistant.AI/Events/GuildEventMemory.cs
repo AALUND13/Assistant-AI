@@ -107,7 +107,7 @@ public partial class GuildEvent {
 
             if(memoryNotInitialized) {
                 foreach(var memory in user.UserMemory) {
-                    GuildMemory[userID].AddItem(new(memory.Key, memory.Value));
+                    UserMemory[userID].AddItem(new(memory.Key, memory.Value));
                 }
 
                 AddEventForUserMemory(userID);

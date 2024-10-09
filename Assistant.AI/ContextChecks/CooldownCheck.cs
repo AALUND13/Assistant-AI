@@ -25,7 +25,7 @@ public class CooldownCheck : IContextCheck<CooldownAttribute> {
 
     public ValueTask<string?> ExecuteCheckAsync(CooldownAttribute attribute, CommandContext context) {
 
-        if(!buckets.TryGetValue(GetKey(attribute, context), out CooldownBucket bucket)) {
+        if(!buckets.TryGetValue(GetKey(attribute, context), out CooldownBucket? bucket)) {
             bucket = new CooldownBucket(context.Command.FullName, context.User.Id, attribute.Cooldown, DateTimeOffset.UtcNow.Add(attribute.Cooldown), 0, attribute.MaxUses);
             buckets.AddOrUpdate(GetKey(attribute, context), bucket, (key, old) => bucket);
         }
