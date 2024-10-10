@@ -23,29 +23,29 @@ public class AICommands {
         SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
         UserData? userData = await databaseContent.UserDataSet
-            .FirstOrDefaultAsync(u => (ulong)u.UserId == user.Id);
+            .FirstOrDefaultAsync(u => u.UserId == user.Id);
 
         GuildData? guildData = await databaseContent.GuildDataSet
             .Include(g => g.GuildUsers)
-            .FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
+            .FirstOrDefaultAsync(g => g.GuildId == ctx.Guild!.Id);
 
         GuildUserData? guildUserData = guildData?.GuildUsers
-            .FirstOrDefault(u => (ulong)u.GuildUserId == user.Id);
+            .FirstOrDefault(u => u.GuildUserId == user.Id);
 
         bool guildExists = guildData != null;
         bool guildUserExists = guildUserData != null;
 
         userData ??= new UserData {
-            UserId = (long)user.Id
+            UserId = user.Id
         };
 
         guildData ??= new GuildData {
-            GuildId = (long)ctx.Guild!.Id,
+            GuildId = ctx.Guild!.Id,
             GuildUsers = []
         };
 
         guildUserData ??= new GuildUserData {
-            GuildUserId = (long)user.Id,
+            GuildUserId = user.Id,
             GuildDataId = guildData.GuildId,
         };
 
@@ -100,16 +100,16 @@ public class AICommands {
         bool guildUserExists = guildUserData != null;
 
         userData ??= new UserData {
-            UserId = (long)ctx.User.Id
+            UserId = ctx.User.Id
         };
 
         guildData ??= new GuildData {
-            GuildId = (long)ctx.Guild!.Id,
+            GuildId = ctx.Guild!.Id,
             GuildUsers = []
         };
 
         guildUserData ??= new GuildUserData {
-            GuildUserId = (long)ctx.User.Id,
+            GuildUserId = ctx.User.Id,
             GuildDataId = guildData.GuildId,
         };
 
@@ -148,11 +148,11 @@ public class AICommands {
         SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
         UserData? userData = databaseContent.UserDataSet
-            .FirstOrDefault(u => (ulong)u.UserId == user.Id);
+            .FirstOrDefault(u => u.UserId == user.Id);
 
         bool userExists = userData != null;
         userData ??= new UserData {
-            UserId = (long)user.Id
+            UserId = user.Id
         };
 
         if(user.IsBot) {

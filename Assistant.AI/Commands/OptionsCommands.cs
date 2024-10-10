@@ -2,16 +2,20 @@
 using AssistantAI.Commands.Provider;
 using AssistantAI.ContextChecks;
 using AssistantAI.Services;
+using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extensions;
+using AssistantAI.Utilities.Interfaces;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NLog;
 using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace AssistantAI.Commands;
@@ -20,22 +24,6 @@ namespace AssistantAI.Commands;
 [Description("Options for the guild.")]
 public class OptionsCommands {
     private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-    private static readonly Dictionary<Type, Func<string, (object, bool)>> converters = new() {
-        { typeof(bool), x =>
-            {
-                bool success = bool.TryParse(x, out bool result);
-                return (result, success);
-            }
-        },
-        { typeof(int), x =>
-            {
-                bool success = int.TryParse(x, out int result);
-                return (result, success);
-            }
-        },
-        { typeof(string), x => (x, true) }  // Strings don't need parsing, so always return true
-    };
-
 
     [Command("get")]
     [Description("Get the current options for the guild.")]
@@ -45,8 +33,15 @@ public class OptionsCommands {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
         SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
-        GuildData? guildData = await databaseContent.GuildDataSet.FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
-        guildData ??= new GuildData();
+
+        GuildData? guildData = await databaseContent.GuildDataSet
+            .Include(g => g.Options)
+            .ThenInclude(g => g.ChannelWhitelists)
+            .FirstOrDefaultAsync(g => g.GuildId == ctx.Guild!.Id);
+
+        guildData ??= new GuildData() {
+            GuildId = ctx.Guild!.Id,
+        };
 
         object?[] options = typeof(GuildOptions)
             .GetProperties()
@@ -67,7 +62,24 @@ public class OptionsCommands {
         var optionsBuilder = new StringBuilder();
 
         for(int i = 0; i < options.Length; i++) {
-            optionsBuilder.AppendLine($"**{optionNames[i]}**: `{options[i]?.ToString() ?? "Null"}`");
+            Type? optionType = options[i]?.GetType();
+            if(optionType == null) {
+                optionsBuilder.AppendLine($"**{optionNames[i]}**: `Null`");
+                continue;
+            } else {
+                MethodInfo? previewMethod = typeof(PreviewManager)
+                    .GetMethod("GetPreview")
+                    ?.MakeGenericMethod(optionType);
+
+                var previewInstance = previewMethod?.Invoke(null, null)!;
+                MethodInfo? getPreviewMethod = previewInstance
+                    .GetType()
+                    .GetMethod("GetPreview");
+
+               string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [options[i]])!;
+
+               optionsBuilder.AppendLine($"**{optionNames[i]}**: `{previewResult}`");
+            }
         }
 
         embed.WithDescription(optionsBuilder.ToString());
@@ -86,11 +98,12 @@ public class OptionsCommands {
 
         GuildData? guildData = await databaseContent.GuildDataSet
             .Include(g => g.Options)
-            .FirstOrDefaultAsync(g => (ulong)g.GuildId == ctx.Guild!.Id);
+            .ThenInclude(g => g.ChannelWhitelists)
+            .FirstOrDefaultAsync(g => g.GuildId == ctx.Guild!.Id);
 
         bool guildExist = guildData != null;
         guildData ??= new GuildData() {
-            GuildId = (long)ctx.Guild!.Id,
+            GuildId = ctx.Guild!.Id,
         };
 
         Type? optionType = typeof(GuildOptions)
@@ -103,27 +116,39 @@ public class OptionsCommands {
             return;
         }
 
-        converters.TryGetValue(optionType, out Func<string, (object, bool)>? converter);
-        if(converter == null) {
+        MethodInfo? previewMethod = typeof(PreviewManager)
+            .GetMethod("GetPreview")
+            ?.MakeGenericMethod(optionType);
+
+        var previewInstance = previewMethod?.Invoke(null, null)!;
+        if(previewInstance == null) {
             logger.Error($"Converter for type '{optionType.Name}' not found.");
             await ctx.ResponeTryEphemeral("An error occurred while trying to edit the options.", true);
             return;
+        } else {
+            MethodInfo? parseMethod = previewInstance
+                .GetType()
+                .GetMethod("Parse");
+            MethodInfo? getPreviewMethod = previewInstance
+                .GetType()
+                .GetMethod("GetPreview");
+
+            var parseResult = parseMethod!.Invoke(previewInstance, [value]);
+            dynamic parsePreview = parseResult!;
+            string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [parsePreview.Item1])!;
+
+            if(!parsePreview.Item2) {
+                await ctx.ResponeTryEphemeral("Invalid value.", true);
+                return;
+            }
+
+            guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, parsePreview.Item1);
+
+            if(!guildExist)
+                databaseContent.GuildDataSet.Add(guildData);
+
+            databaseContent.SaveChanges();
+            await ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{previewResult}`.", true);
         }
-
-        (object returnValue, bool success) = converter.Invoke(value);
-        if(!success) {
-            await ctx.ResponeTryEphemeral("Invalid value.", true);
-            return;
-        }
-
-        guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, returnValue);
-
-        if(!guildExist)
-            databaseContent.GuildDataSet.Add(guildData);
-
-        databaseContent.SaveChanges();
-
-
-        await ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{returnValue}`.", true);
     }
 }

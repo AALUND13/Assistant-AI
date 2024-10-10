@@ -1,10 +1,5 @@
 ﻿using AssistantAI.Utilities.Extensions;
 using AssistantAI.Utilities.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AssistantAI.Utilities.OptionPreviews {
     public class BoolPreview : IOptionPreview<bool> {
@@ -13,6 +8,12 @@ namespace AssistantAI.Utilities.OptionPreviews {
         }
 
         public (bool, bool) Parse(string value) {
+            if(value.ToLower() == "enabled") {
+                return (true, true);
+            } else if(value.ToLower() == "disabled") {
+                return (false, true);
+            }
+
             bool success = bool.TryParse(value, out bool result);
             return (result, success);
         }

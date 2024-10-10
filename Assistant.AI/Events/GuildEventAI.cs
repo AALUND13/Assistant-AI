@@ -93,7 +93,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         }
 
         bool shouldIgnore = eventArgs.Author.IsBot
-            || !guildData.Options.Enabled
+            || !guildData.Options.AIEnabled
             || eventArgs.Channel.IsPrivate
             || eventArgs.Channel.IsNSFW
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
@@ -139,7 +139,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             logger.Info("Bot decided to reply. Initiating response...");
             await AddTypingTimerForChannel(eventArgs.Channel);
 
-            ToolTrigger toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
+            var toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
 
             List<ChatMessage> responseMessages = await ChatClientServices[eventArgs.Channel.Id]
                 .PromptAsync(toolsFunctions, toolTrigger, [responePrompt, ..messages]);
@@ -195,11 +195,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             .Where(attachment => attachment.MediaType!.StartsWith("image"))
             .Select(attachment => new Uri(attachment.Url!)).ToList();
 
-        DiscordMessage? messageReference = discordMessage.ReferencedMessage;
-        DiscordUser? referencedUser = messageReference?.Author;
+        var messageReference = discordMessage.ReferencedMessage;
+        var referencedUser = messageReference?.Author;
         string? referenceUsername = referencedUser?.GlobalName ?? referencedUser?.Username;
 
-        StringBuilder stringBuilder = new StringBuilder();
+        var stringBuilder = new StringBuilder();
         stringBuilder.Append($"User: {discordMessage.Author!.GlobalName}");
         stringBuilder.Append($" | ID: {discordMessage.Author!.Id}");
         if(referenceUsername != null) {

@@ -4,6 +4,8 @@ using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
 using AssistantAI.Services.Interfaces;
+using AssistantAI.Utilities;
+using AssistantAI.Utilities.OptionPreviews;
 using DSharpPlus;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.EventArgs;
@@ -18,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
-using OpenAI.Chat;
 using System.Reflection;
 using System.Text;
 
@@ -41,6 +42,11 @@ public static class ServiceManager {
         using(SqliteDatabaseContext context = GetService<SqliteDatabaseContext>()) {
             context.Database.EnsureCreated();
         }
+
+        PreviewManager.RegisterPreview(new BoolPreview());
+        PreviewManager.RegisterPreview(new IntPreview());
+        PreviewManager.RegisterPreview(new StringPreview());
+        PreviewManager.RegisterPreview(new ListPreview<ulong>());
 
         InializeDiscordClient();
     }

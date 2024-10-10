@@ -5,15 +5,27 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AssistantAI;
 
-public enum AIResponsePermission
-{
+public enum AIResponsePermission {
     None,
     Ignored,
     Blacklisted,
 }
 
-public class ChatToolCallData
-{
+#nullable disable
+
+public class ChannelMention {
+    [Key] public int Id { get; set; }
+    public ulong ChannelId { get; set; }
+
+    override public string ToString() {
+        return $"<#{ChannelId}>";
+    }
+
+    [ForeignKey("GuildOptions")] public ulong GuildOptionsId { get; set; }
+    public GuildOptions GuildOptions { get; set; }
+}
+
+public class ChatToolCallData {
     [Key] public int Id { get; set; }
 
     public required string ToolID { get; set; }
@@ -21,13 +33,11 @@ public class ChatToolCallData
     public required string FunctionArguments { get; set; }
 
     [ForeignKey("ChannelChatMessageData")] public int ChannelChatMessageDataId { get; set; }
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public ChannelChatMessageData ChannelChatMessageData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 }
 
-public class ChannelChatMessageData
-{
+public class ChannelChatMessageData {
     [Key] public int Id { get; set; }
 
     public required ChatMessageRole Role { get; set; }
@@ -36,90 +46,84 @@ public class ChannelChatMessageData
     public List<ChatToolCallData>? ToolCalls { get; set; }
     public string? ToolCallId { get; set; }
 
-    [ForeignKey("ChannelData")] public long ChannelId { get; set; }
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [ForeignKey("ChannelData")] public ulong ChannelId { get; set; }
     public ChannelData Channel { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 }
 
-public class ChannelData
-{
-    [Key] public long ChannelId { get; set; } // Primary key for SQLite
+public class ChannelData {
+    [Key] public ulong ChannelId { get; set; } // Primary key for SQLite
 
     public List<ChannelChatMessageData> ChatMessages { get; set; } = [];
 }
 
 
-public class UserMemoryItem
-{
+public class UserMemoryItem {
     [Key] public int Id { get; set; }
 
     public required string Key { get; set; }
 
     public required string Value { get; set; }
 
-    [ForeignKey("UserData")] public long UserId { get; set; }
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [ForeignKey("UserData")] public ulong UserId { get; set; }
     public UserData RelatedData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable
 }
 
-public class GuildMemoryItem
-{
+public class GuildMemoryItem {
     [Key] public int Id { get; set; }
 
     public required string Key { get; set; }
 
     public required string Value { get; set; }
-    [ForeignKey("GuildData")] public long GuildId { get; set; }
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [ForeignKey("GuildData")] public ulong GuildId { get; set; }
     public GuildData RelatedData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable
 }
 
 
-public class UserData
-{
-    [Key] public long UserId { get; set; }
+public class UserData {
+    [Key] public ulong UserId { get; set; }
 
     public List<UserMemoryItem> UserMemory { get; set; } = [];
 
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
 }
 
-public class GuildUserData
-{
-    [Key] public long GuildUserId { get; set; }
+public class GuildUserData {
+    [Key] public ulong GuildUserId { get; set; }
 
     public AIResponsePermission ResponsePermission { get; set; } = AIResponsePermission.None;
 
-    [ForeignKey("GuildData")] public long GuildDataId { get; set; }
-
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [ForeignKey("GuildData")] public ulong GuildDataId { get; set; }
     public GuildData GuildData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 }
 
 
-public class GuildOptions
-{
-    [Key, Ignore] public long GuildOptionsId { get; set; }
+public class GuildOptions {
+    [Key, Ignore] public ulong GuildOptionsId { get; set; }
 
-    public bool Enabled { get; set; } = true;
+    // Options.
 
+    public bool AIEnabled { get; set; } = true;
     public string Prefix { get; set; } = "a!";
+    [Ignore] public List<ChannelMention> ChannelWhitelists { get; set; } = [];
+    [NotMapped] public List<ulong> ChannelWhitelistIds { get { 
+            return ChannelWhitelists.Select(c => c.ChannelId).ToList(); 
+        } set { 
+            ChannelWhitelists = value.Select(c => new ChannelMention { ChannelId = c }).ToList(); 
+        } 
+    }
 
-    [ForeignKey("GuildData"), Ignore] public long GuildDataId { get; set; }
+    // End of options.
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    [ForeignKey("GuildData"), Ignore] public ulong GuildDataId { get; set; }
     [Ignore] public GuildData GuildData { get; set; }
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+
 }
 
-public class GuildData
-{
-    [Key] public long GuildId { get; set; }
+public class GuildData {
+    [Key] public ulong GuildId { get; set; }
 
     public List<GuildUserData> GuildUsers { get; set; } = [];
 
@@ -127,3 +131,5 @@ public class GuildData
 
     public GuildOptions Options { get; set; } = new();
 }
+
+#nullable restore

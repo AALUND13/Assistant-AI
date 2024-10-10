@@ -3,8 +3,8 @@ using AssistantAI.Utilities.Interfaces;
 using System.Text.RegularExpressions;
 
 namespace AssistantAI.Utilities.OptionPreviews {
-    public class ListPreview<T> : IOptionPreview<IEnumerable<T>> {
-        public string GetPreview(IEnumerable<T> value) {
+    public class ListPreview<T> : IOptionPreview<List<T>> {
+        public string GetPreview(List<T> value) {
             int totalLength = 0;
             string resultString = "";
             foreach(T item in value) {
@@ -16,28 +16,28 @@ namespace AssistantAI.Utilities.OptionPreviews {
                 resultString += itemAsString + ", ";
                 totalLength += itemAsString.Length + 2;
             }
-            return $"[{resultString}]";
+            return $"[{resultString.TrimEnd(", ".ToCharArray())}]";
             
 
         }
 
-        public (IEnumerable<T>?, bool) Parse(string value) {
-            IEnumerable<string> result = value.Split(',').Select(v => v.Trim());
+        public (List<T>?, bool) Parse(string value) {
+            List<string> result = value.Split(',').Select(v => v.Trim()).ToList();
 
             bool canParse = result.All(v => {
                 Type type = typeof(T);
                 switch(type.Name) {
-                    case "Int32":
+                    case nameof(Int32):
                         return int.TryParse(v, out _);
-                    case "Int64":
+                    case nameof(Int64):
                         return long.TryParse(v, out _);
-                    case "UInt32":
+                    case nameof(UInt32):
                         return uint.TryParse(v, out _);
-                    case "UInt64":
+                    case nameof(UInt64):
                         return ulong.TryParse(v, out _);
-                    case "Boolean":
+                    case nameof(Boolean):
                         return bool.TryParse(v, out _);
-                    case "String":
+                    case nameof(String):
                         return true;
                     default:
                         return false;
@@ -45,7 +45,7 @@ namespace AssistantAI.Utilities.OptionPreviews {
             });
 
             if(canParse) {
-                return (result.Select(v => (T)Convert.ChangeType(v, typeof(T))), true);
+                return (result.Select(v => (T)Convert.ChangeType(v, typeof(T))).ToList(), true);
             }
 
             return (null, false);

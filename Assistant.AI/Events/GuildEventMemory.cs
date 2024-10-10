@@ -23,7 +23,7 @@ public partial class GuildEvent {
         stringBuilder.Append("These are the user memory keys and values that have been stored\n");
         stringBuilder.Append("You can Add, Remove, or Overwrite a key by using your tools functions\n");
         stringBuilder.Append("User Memory:\n");
-        if(userMemory.Count() == 0) {
+        if(!userMemory.Any()) {
             stringBuilder.Append("No user memory has been stored\n");
         } else {
             foreach(var (key, memory) in userMemory) {
@@ -41,7 +41,7 @@ public partial class GuildEvent {
         stringBuilder.Append("These are the guild memory keys and values that have been stored\n");
         stringBuilder.Append("You can Add, Remove, or Overwrite a key by using your tools functions\n");
         stringBuilder.Append("guild Memory:\n");
-        if(guildMemory.Count() == 0) {
+        if(!guildMemory.Any()) {
             stringBuilder.Append("No guild memory has been stored\n");
         } else {
             foreach(KeyValuePair<string, string> memory in guildMemory) {
@@ -56,15 +56,15 @@ public partial class GuildEvent {
         Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet
             .Include(channel => channel.ChatMessages)
             .ThenInclude(msg => msg.ToolCalls)
-            .ToDictionary(channel => (ulong)channel.ChannelId, channel => channel);
+            .ToDictionary(channel => channel.ChannelId, channel => channel);
 
         Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet
             .Include(guild => guild.GuildMemory)
-            .ToDictionary(guild => (ulong)guild.GuildId, guild => guild);
+            .ToDictionary(guild => guild.GuildId, guild => guild);
 
         Dictionary<ulong, UserData> users = databaseContent.UserDataSet
             .Include(user => user.UserMemory)
-            .ToDictionary(user => (ulong)user.UserId, user => user);
+            .ToDictionary(user => user.UserId, user => user);
 
         logger.Info("Loading 'ChatMessages' from the database.");
         foreach(ulong channelID in channels.Keys) {
@@ -127,7 +127,7 @@ public partial class GuildEvent {
 
                 var channelData = databaseContent.ChannelDataSet
                     .Include(channel => channel.ChatMessages)
-                    .FirstOrDefault(channel => (ulong)channel.ChannelId == channelID);
+                    .FirstOrDefault(channel => channel.ChannelId == channelID);
 
                 if(channelData != null) {
                     channelData.ChatMessages.Add(chatMessage.Serialize());
@@ -145,15 +145,15 @@ public partial class GuildEvent {
 
                 var channelData = databaseContent.ChannelDataSet
                     .Include(channel => channel.ChatMessages)
-                    .FirstOrDefault(channel => (ulong)channel.ChannelId == channelID);
+                    .FirstOrDefault(channel => channel.ChannelId == channelID);
 
                 if(channelData != null) {
                     channelData.ChatMessages.Remove(chatMessage.Serialize());
                     logger.Debug($"Removed ChatMessage from ChannelData: {(chatMessage.Content.Count > 0 ? chatMessage.Content[0].Text : "None")}");
                 } else {
                     ChannelData newChannelData = new() {
-                        ChannelId = (long)channelID,
-                        ChatMessages = new List<ChannelChatMessageData> { chatMessage.Serialize() }
+                        ChannelId = channelID,
+                        ChatMessages = [chatMessage.Serialize()]
                     };
 
                     databaseContent.ChannelDataSet.Add(newChannelData);
@@ -176,7 +176,7 @@ public partial class GuildEvent {
 
                 GuildData? guild = databaseContent.GuildDataSet
                     .Include(g => g.GuildMemory)
-                    .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+                    .FirstOrDefault(g => g.GuildId == guildID);
 
                 if(guild != null) {
                     GuildMemoryItem guildMemoryItem = new() {
@@ -188,8 +188,8 @@ public partial class GuildEvent {
                     logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
                 } else {
                     GuildData newGuildData = new() {
-                        GuildId = (long)guildID,
-                        GuildMemory = new List<GuildMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                        GuildId = guildID,
+                        GuildMemory = [new() { Key = guildMemory.Key, Value = guildMemory.Value }]
                     };
 
                     databaseContent.GuildDataSet.Add(newGuildData);
@@ -206,7 +206,7 @@ public partial class GuildEvent {
 
                 GuildData? guild = databaseContent.GuildDataSet
                     .Include(g => g.GuildMemory)
-                    .FirstOrDefault(g => (ulong)g.GuildId == guildID);
+                    .FirstOrDefault(g => g.GuildId == guildID);
 
                 if(guild != null) {
                     var guildMemoryItem = guild.GuildMemory.FirstOrDefault(memory => memory.Key == guildMemory.Key && memory.Value == guildMemory.Value);
@@ -217,8 +217,8 @@ public partial class GuildEvent {
                     }
                 } else {
                     GuildData newGuildData = new() {
-                        GuildId = (long)guildID,
-                        GuildMemory = new List<GuildMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                        GuildId = guildID,
+                        GuildMemory = [new() { Key = guildMemory.Key, Value = guildMemory.Value }]
                     };
 
                     databaseContent.GuildDataSet.Add(newGuildData);
@@ -239,7 +239,7 @@ public partial class GuildEvent {
 
                 UserData? user = databaseContent.UserDataSet
                     .Include(g => g.UserMemory)
-                    .FirstOrDefault(g => (ulong)g.UserId == userID);
+                    .FirstOrDefault(g => g.UserId == userID);
 
                 if(user != null) {
                     UserMemoryItem UserMemoryItem = new() {
@@ -251,8 +251,8 @@ public partial class GuildEvent {
                     logger.Debug($"Added a GuildMemory to GuildData: [{guildMemory.Key}: {guildMemory.Value}]");
                 } else {
                     UserData newUser = new() {
-                        UserId = (long)userID,
-                        UserMemory = new List<UserMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                        UserId = userID,
+                        UserMemory = [new() { Key = guildMemory.Key, Value = guildMemory.Value }]
                     };
 
                     databaseContent.UserDataSet.Add(newUser);
@@ -269,7 +269,7 @@ public partial class GuildEvent {
 
                 UserData? user = databaseContent.UserDataSet
                     .Include(g => g.UserMemory)
-                    .FirstOrDefault(g => (ulong)g.UserId == userID);
+                    .FirstOrDefault(g => g.UserId == userID);
 
                 if(user != null) {
                     var guildMemoryItem = user.UserMemory.FirstOrDefault(memory => memory.Key == guildMemory.Key && memory.Value == guildMemory.Value);
@@ -280,8 +280,8 @@ public partial class GuildEvent {
                     }
                 } else {
                     UserData newUser = new() {
-                        UserId = (long)userID,
-                        UserMemory = new List<UserMemoryItem> { new() { Key = guildMemory.Key, Value = guildMemory.Value } }
+                        UserId = userID,
+                        UserMemory = [new() { Key = guildMemory.Key, Value = guildMemory.Value }]
                     };
 
                     databaseContent.UserDataSet.Add(newUser);
