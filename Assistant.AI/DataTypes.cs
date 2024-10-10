@@ -15,11 +15,8 @@ public enum AIResponsePermission {
 
 public class ChannelMention {
     [Key] public int Id { get; set; }
-    public ulong ChannelId { get; set; }
 
-    override public string ToString() {
-        return $"<#{ChannelId}>";
-    }
+    public ulong ChannelId { get; set; }
 
     [ForeignKey("GuildOptions")] public ulong GuildOptionsId { get; set; }
     public GuildOptions GuildOptions { get; set; }

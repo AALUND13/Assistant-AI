@@ -78,7 +78,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         GuildData? guildData = databaseContent.GuildDataSet
             .Include(guild => guild.Options)
-            .FirstOrDefault(guild => (ulong)guild.GuildId == eventArgs.Guild.Id);
+            .ThenInclude(guild => guild.ChannelWhitelists)
+            .FirstOrDefault(guild => guild.GuildId == eventArgs.Guild.Id);
 
         if(guildData == null) {
             logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild.Id);
@@ -93,12 +94,17 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         }
 
         bool shouldIgnore = eventArgs.Author.IsBot
+
             || !guildData.Options.AIEnabled
             || eventArgs.Channel.IsPrivate
+
             || eventArgs.Channel.IsNSFW
+            || (guildData.Options.ChannelWhitelistIds.Count > 0 && !guildData.Options.ChannelWhitelistIds.Contains(eventArgs.Channel.Id))
+
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
-            || (guildData.GuildUsers.FirstOrDefault(u => (ulong)u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None
+
+            || (guildData.GuildUsers.FirstOrDefault(u => u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None
             || userData.ResponsePermission != AIResponsePermission.None;
 
         if(shouldIgnore)
