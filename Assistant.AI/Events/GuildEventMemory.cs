@@ -83,6 +83,7 @@ public partial class GuildEvent {
                 AddEventForMessages(channelID);
             }
         }
+        
 
         logger.Info("Loading 'GuildMemory' from the database.");
         foreach(ulong guildID in guilds.Keys) {
@@ -132,6 +133,13 @@ public partial class GuildEvent {
                 if(channelData != null) {
                     channelData.ChatMessages.Add(chatMessage.Serialize());
                     logger.Debug($"Added a ChatMessage to ChannelData: {(chatMessage.Content.Count > 0 ? chatMessage.Content[0].Text : "None")}");
+                } else {
+                    ChannelData newChannelData = new() {
+                        ChannelId = channelID,
+                        ChatMessages = [chatMessage.Serialize()]
+                    };
+
+                    databaseContent.ChannelDataSet.Add(newChannelData);
                 }
 
                 databaseContent.SaveChanges();
