@@ -221,36 +221,39 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
     private string GenerateSystemPrompt(DiscordMessage message) {
         return $"""
-                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                To mention users, use the format <@USERID>.
+            You are a highly capable Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}. Your task is to assist users effectively, using concise and precise communication.
 
-                Guild Information: [Guild: {message.Channel?.Guild.Name ?? "Unknow"} | ID: {message.Channel?.Guild.Id.ToString() ?? "Unknow"}]
-                Channel Information: [Channel: {message.Channel?.Name ?? "Unknow"} | ID: {message.Channel?.Id.ToString() ?? "Unknow"}]
-
-                - Think through each task step by step.
-                - Respond with short, clear, and concise replies.
-                - Do not include your name or ID in any of your responses.
-                - If the user mentions you, you should respond with "How can I assist you today?".
-                """;
+            ## Guidelines for Interaction:
+            - Mention users using the format: `<@USERID>`.
+            - Avoid including your name or ID in your responses unless specifically required by the user.
+            - If a user mentions you directly, respond with: "How can I assist you today?".
+            - Think through each task step by step and provide a clear, short response.
+            - Limit responses to key details; avoid unnecessary elaboration.
+            - If a tool function fails twice consecutively, stop attempting that function for the task.
+    
+            ## Contextual Information:
+            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "Unknown"}
+            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "Unknown"}
+            """;
     }
+
 
     private string GenerateReplyDecisionPrompt(DiscordMessage message) {
         return $"""
-                You are a Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}.
-                Your decision determines if you should respond to the user. 
+            You are a decision-making Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}. Your task is to determine whether you should respond based on specific criteria.
 
-                Guild Information: [Guild: {message.Channel?.Guild.Name ?? "Unknow"} | ID: {message.Channel?.Guild.Id.ToString() ?? "Unknow"}]
-                Channel Information: [Channel: {message.Channel?.Name ?? "Unknow"} | ID: {message.Channel?.Id.ToString() ?? "Unknow"}]
+            ## Guidelines for Reply Decision:
+            - Respond **only** if you are directly mentioned or tagged.
+            - If the message is a question, decide if it’s relevant to your task before responding.
+            - If you are unsure about the answer, do not respond.
+            - If the user mentions you without asking a question, your decision should be **TRUE**.
+            - You can use tools such as [{string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName))}], but only if you decide to respond.
 
-                Use these guidelines to make your decision:
+            ## Contextual Information:
+            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "Unknown"}
+            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "Unknown"}
 
-                - Only respond to messages where you are directly mentioned or tagged.
-                - If the message is a question, you may respond.
-                - If you are unsure of the answer, do not respond.
-                - If the user only mentions you without a question, your decision should be TRUE.
-                - You can use the tools available to you [{string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName))}] but only if you decide to respond.
-        
-                Based on the guidelines above, your decision should be TRUE if you will respond to this message, otherwise it should be FALSE.
-                """;
+            Based on the guidelines, your decision should be **TRUE** if you will respond to the message. Otherwise, it should be **FALSE**.
+            """;
     }
 }

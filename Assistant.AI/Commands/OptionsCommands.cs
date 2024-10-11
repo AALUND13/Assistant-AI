@@ -133,7 +133,7 @@ public class OptionsCommands {
                 .GetType()
                 .GetMethod("GetPreview");
 
-            dynamic?  parseResult = parseMethod!.Invoke(previewInstance, [value])!;
+            dynamic? parseResult = parseMethod!.Invoke(previewInstance, [value])!;
 
             if(!parseResult.Item2) {
                 await ctx.ResponeTryEphemeral("Invalid value.", true);

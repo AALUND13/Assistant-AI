@@ -84,7 +84,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 break;
             case ChatFinishReason.ToolCalls:
                 if(option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
-                    returnMessages.Add(ChatMessage.CreateAssistantMessage("Tool recursion limit reached. Please try again."));
+                    returnMessages.Add(ChatMessage.CreateAssistantMessage("Tool recursion limit reached."));
                     return returnMessages;
                 }
 
