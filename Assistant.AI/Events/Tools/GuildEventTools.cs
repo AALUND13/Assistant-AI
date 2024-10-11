@@ -14,7 +14,7 @@ public partial class GuildEvent {
         try {
             user = await client.GetUserAsync(userID);
         } catch(BadRequestException) {
-            return $"User with ID {userID} was not found";
+            return $"User with ID '{userID}' was not found.";
         }
         
         string? customActivity = user.Presence?.Activities.FirstOrDefault(activity => activity.ActivityType == DiscordActivityType.Custom)?.RichPresence.State;
@@ -38,7 +38,7 @@ public partial class GuildEvent {
         }
 
         UserMemory[toolTrigger.User.Id].AddItem(new(key, value));
-        return $"User memory key {key} has been added or overwritten with value {value}";
+        return $"User memory key '{key}' has been added or overwritten with value '{value}'.";
     }
 
     [Description("Add or overwrite a key in the guild memory.")]
@@ -49,32 +49,32 @@ public partial class GuildEvent {
         }
 
         GuildMemory[toolTrigger.Guild.Id].AddItem(new(key, value));
-        return $"Guild memory key {key} has been added or overwritten with value {value}";
+        return $"Guild memory key '{key}' has been added or overwritten with value '{value}'.";
     }
 
     [Description("Remove a key from the user memory.")]
     string RemoveUserMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
-            return $"User memory key {key} was not found";
+            return $"User memory key '{key}' was not found.";
 
         var keyValuePair = UserMemory[toolTrigger.User.Id].FirstOrDefault(keyValuePair => keyValuePair.Key == key);
 
         if(UserMemory[toolTrigger.User.Id].RemoveItem(keyValuePair))
-            return $"User memory key {key} has been removed";
+            return $"User memory key '{key}' has been removed.";
 
-        return $"User memory key {key} was not found";
+        return $"User memory key '{key}' was not found.";
     }
 
     [Description("Remove a key from the guild memory.")]
     string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id))
-            return $"Guild memory key {key} was not found";
+            return $"Guild memory key '{key}' was not found.";
 
         var keyValuePair = GuildMemory[toolTrigger.Guild.Id].FirstOrDefault(keyValuePair => keyValuePair.Key == key);
 
         if(GuildMemory[toolTrigger.Guild.Id].RemoveItem(keyValuePair))
-            return $"Guild memory key {key} has been removed";
-        return $"Guild memory key {key} was not found";
+            return $"Guild memory key '{key}' has been removed.";
+        return $"Guild memory key '{key}' was not found.";
     }
 
     [Description("Get the user memory.")]
