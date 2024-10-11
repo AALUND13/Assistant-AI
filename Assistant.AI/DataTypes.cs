@@ -104,13 +104,7 @@ public class GuildOptions {
 
     public bool AIEnabled { get; set; } = true;
     public string Prefix { get; set; } = "a!";
-    [Ignore] public List<ChannelMention> ChannelWhitelists { get; set; } = [];
-    [NotMapped] public List<ulong> ChannelWhitelistIds { get { 
-            return ChannelWhitelists.Select(c => c.ChannelId).ToList(); 
-        } set { 
-            ChannelWhitelists = value.Select(c => new ChannelMention { ChannelId = c }).ToList(); 
-        } 
-    }
+    public List<ChannelMention> ChannelWhitelists { get; set; } = [];
 
     // End of options.
 

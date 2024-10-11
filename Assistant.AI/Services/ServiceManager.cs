@@ -46,7 +46,8 @@ public static class ServiceManager {
         PreviewManager.RegisterPreview(new BoolPreview());
         PreviewManager.RegisterPreview(new IntPreview());
         PreviewManager.RegisterPreview(new StringPreview());
-        PreviewManager.RegisterPreview(new ListPreview<ulong>());
+        PreviewManager.RegisterPreview(new ChannelMentionPreview());
+        PreviewManager.RegisterPreview(new ListPreview<ChannelMention>());
 
         InializeDiscordClient();
     }

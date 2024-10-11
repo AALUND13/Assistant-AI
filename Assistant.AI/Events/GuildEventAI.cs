@@ -99,7 +99,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             || eventArgs.Channel.IsPrivate
 
             || eventArgs.Channel.IsNSFW
-            || (guildData.Options.ChannelWhitelistIds.Count > 0 && !guildData.Options.ChannelWhitelistIds.Contains(eventArgs.Channel.Id))
+            || (guildData.Options.ChannelWhitelists.Count > 0 && !guildData.Options.ChannelWhitelists.Any(c => c.ChannelId == eventArgs.Channel.Id))
 
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)

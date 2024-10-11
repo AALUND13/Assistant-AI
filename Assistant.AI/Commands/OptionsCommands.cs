@@ -78,7 +78,7 @@ public class OptionsCommands {
 
                string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [options[i]])!;
 
-               optionsBuilder.AppendLine($"**{optionNames[i]}**: `{previewResult}`");
+               optionsBuilder.AppendLine($"{optionNames[i]}: **{previewResult}**");
             }
         }
 
@@ -133,22 +133,21 @@ public class OptionsCommands {
                 .GetType()
                 .GetMethod("GetPreview");
 
-            var parseResult = parseMethod!.Invoke(previewInstance, [value]);
-            dynamic parsePreview = parseResult!;
-            string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [parsePreview.Item1])!;
+            dynamic?  parseResult = parseMethod!.Invoke(previewInstance, [value])!;
 
-            if(!parsePreview.Item2) {
+            if(!parseResult.Item2) {
                 await ctx.ResponeTryEphemeral("Invalid value.", true);
                 return;
             }
+            string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [parseResult.Item1])!;
 
-            guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, parsePreview.Item1);
+            guildData.Options.GetType().GetProperty(options)!.SetValue(guildData.Options, parseResult.Item1);
 
             if(!guildExist)
                 databaseContent.GuildDataSet.Add(guildData);
 
             databaseContent.SaveChanges();
-            await ctx.ResponeTryEphemeral($"Successfully change `{options}` to `{previewResult}`.", true);
+            await ctx.ResponeTryEphemeral($"Successfully change `{options}` to **{previewResult}**.", true);
         }
     }
 }
