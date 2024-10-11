@@ -151,7 +151,17 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
                 .PromptAsync(toolsFunctions, toolTrigger, [responePrompt, ..messages]);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
-            await eventArgs.Message.RespondAsync(responseMessages.Last().GetTextMessagePart().Text);
+
+            var messageBuilder = new DiscordMessageBuilder();
+            string response = responseMessages.Last().GetTextMessagePart().Text;
+            if(response.Length > 2000) {
+                messageBuilder.WithContent("Content too long to send. Sending as a file instead.");
+                messageBuilder.AddFile("Message.txt", new MemoryStream(Encoding.UTF8.GetBytes(response.ToString())), AddFileOptions.CloseStream);
+            } else {
+                messageBuilder.WithContent(response);
+            }
+            await eventArgs.Message.RespondAsync(messageBuilder);
+
             logger.Info("Bot response sent to channel {0}.", eventArgs.Channel.Id);
         }
     }
