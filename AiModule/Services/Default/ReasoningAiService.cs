@@ -83,13 +83,7 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(reasoning?.Response));
                 break;
             case ChatFinishReason.ToolCalls:
-                if(option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
-                    returnMessages.Add(ChatMessage.CreateAssistantMessage("Tool recursion limit reached."));
-                    return returnMessages;
-                }
-
                 returnMessages.Add(ChatMessage.CreateAssistantMessage(chatCompletion));
-
 
                 foreach(ChatToolCall toolCall in chatCompletion.ToolCalls) {
                     logger.LogInformation("Calling tool function: {FunctionName}", toolCall.FunctionName);
@@ -100,10 +94,14 @@ public class ReasoningAiService : IAiResponseToolService<List<ChatMessage>> {
                 }
 
                 messages.AddRange(returnMessages);
-                var responeMessages = await PromptAsync(messages, toolsFunctions, option);
+                List<ChatMessage>? responeMessages;
+                if(option.ToolCallsRecursionCount >= option.MaxToolCallsRecursionCount) {
+                    responeMessages = await PromptAsync(messages, new ToolsFunctions<Option>(new ToolsFunctionsBuilder<Option>()), option);
+                } else {
+                    responeMessages = await PromptAsync(messages, toolsFunctions, option);
+                }
 
                 returnMessages.AddRange(responeMessages);
-
                 break;
             default:
                 returnMessages.Add(ChatMessage.CreateAssistantMessage("Failed to generate response. Please try again."));

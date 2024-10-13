@@ -2,7 +2,6 @@
 using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extensions;
-using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities.Extensions;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -239,8 +238,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             - If a user mentions you directly, respond with: "How can I assist you today?".
             - Think through each task step by step and provide a clear, short response.
             - Limit responses to key details; avoid unnecessary elaboration.
-            - If a tool function fails twice consecutively, stop attempting that function for the task.
-    
+
             ## Contextual Information:
             - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "Unknown"}
             - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "Unknown"}

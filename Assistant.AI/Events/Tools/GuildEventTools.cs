@@ -30,7 +30,7 @@ public partial class GuildEvent {
 
     //TODO: Make these tools methods with the new chat message system.
 
-    [Description("Add or overwrite a key in the user memory.")]
+    [Description("Add or overwrite a key in the user memory, Note: The memory not update until next message.")]
     string AddOrOverwriteUserMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(!UserMemory.ContainsKey(toolTrigger.User!.Id)) {
             UserMemory[toolTrigger.User.Id] = [];
@@ -41,7 +41,7 @@ public partial class GuildEvent {
         return $"User memory key '{key}' has been added or overwritten with value '{value}'.";
     }
 
-    [Description("Add or overwrite a key in the guild memory.")]
+    [Description("Add or overwrite a key in the guild memory, Note: The memory not update until next message.")]
     string AddOrOverwriteGuildMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id)) {
             GuildMemory[toolTrigger.Guild.Id] = [];
@@ -52,7 +52,7 @@ public partial class GuildEvent {
         return $"Guild memory key '{key}' has been added or overwritten with value '{value}'.";
     }
 
-    [Description("Remove a key from the user memory.")]
+    [Description("Remove a key from the user memory, Note: The memory not update until next message.")]
     string RemoveUserMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
             return $"User memory key '{key}' was not found.";
@@ -65,7 +65,7 @@ public partial class GuildEvent {
         return $"User memory key '{key}' was not found.";
     }
 
-    [Description("Remove a key from the guild memory.")]
+    [Description("Remove a key from the guild memory, Note: The memory not update until next message.")]
     string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id))
             return $"Guild memory key '{key}' was not found.";
