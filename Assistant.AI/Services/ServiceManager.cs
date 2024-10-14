@@ -90,7 +90,7 @@ public static class ServiceManager {
         logger.Info("Discord client initialized.");
 
         services.AddCommandsExtension(
-            extension => {
+            (serviceProvider, extension) => {
 
                 extension.AddCommands(Assembly.GetExecutingAssembly());
 
