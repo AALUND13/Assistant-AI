@@ -1,7 +1,6 @@
 ﻿using AssistantAI.Services;
 using NLog;
 
-LogManager.Configuration = new NLog.Config.XmlLoggingConfiguration("nlog.config");
 Logger logger = LogManager.GetCurrentClassLogger();
 
 AppDomain.CurrentDomain.UnhandledException += (sender, err) => {
