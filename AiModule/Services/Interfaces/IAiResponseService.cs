@@ -9,7 +9,7 @@ public class BaseOption {
     /// <summary>
     /// this is use to limit the recursion of the tool to prevent infinite loops
     /// </summary>
-    public int MaxToolCallsRecursionCount = 5;
+    public int MaxToolCallsRecursionCount = 2;
 }
 
 
