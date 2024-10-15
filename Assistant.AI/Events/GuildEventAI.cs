@@ -75,13 +75,16 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private bool ShouldIgnoreMessage(MessageCreatedEventArgs eventArgs) {
         logger.Debug("Checking if message should be ignored...");
 
+        ulong guildId = eventArgs.Guild != null! ? eventArgs.Guild.Id : 0;
+
         GuildData? guildData = databaseContent.GuildDataSet
             .Include(guild => guild.Options)
             .ThenInclude(guild => guild.ChannelWhitelists)
-            .FirstOrDefault(guild => guild.GuildId == eventArgs.Guild.Id);
+            .FirstOrDefault(guild => guild.GuildId == guildId);
+
 
         if(guildData == null) {
-            logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild.Id);
+            logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild?.Id.ToString() ?? "N/A");
             guildData = new GuildData();
         }
 
@@ -92,28 +95,29 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             userData = new UserData();
         }
 
-        bool shouldIgnore = eventArgs.Author.IsBot
-
+        bool guildIgnored = false;
+        if(guildId != 0) {
+            guildIgnored = eventArgs.Author.IsBot
             || !guildData.Options.AIEnabled
-            || eventArgs.Channel.IsPrivate
-
-            || eventArgs.Channel.IsNSFW
             || (guildData.Options.ChannelWhitelists.Count > 0 && !guildData.Options.ChannelWhitelists.Any(c => c.ChannelId == eventArgs.Channel.Id))
-
             || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
+            || (guildData.GuildUsers.FirstOrDefault(u => u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None;
+        }
 
-            || (guildData.GuildUsers.FirstOrDefault(u => u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None
-            || userData.ResponsePermission != AIResponsePermission.None;
+        bool shouldIgnore = eventArgs.Author.IsBot
+            || eventArgs.Channel.IsNSFW
+            || userData.ResponsePermission != AIResponsePermission.None
+            || (guildId != 0 && guildIgnored);
 
         if(shouldIgnore)
-            logger.Info("Message ignored for User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild.Id);
+            logger.Info("Message ignored for User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A");
 
         return shouldIgnore;
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        logger.Info("Handling message event from User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild.Id);
+        logger.Info("Handling message event from User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A");
 
         if(ShouldIgnoreMessage(eventArgs)) {
             logger.Info("Message ignored. No further processing required.");
@@ -132,9 +136,13 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         SystemChatMessage responePrompt = ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message));
 
         SystemChatMessage userMemory = GenerateUserMemorySystemMessage(eventArgs.Author.Id);
-        SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
 
-        List<ChatMessage> messages = [userMemory, guildMemory];
+        List<ChatMessage> messages = [];
+        messages.Add(userMemory);
+        if(eventArgs.Guild != null!) {
+            SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
+            messages.Add(guildMemory);
+        }
 
 
 
@@ -240,8 +248,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             - Limit responses to key details; avoid unnecessary elaboration.
 
             ## Contextual Information:
-            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "Unknown"}
-            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "Unknown"}
+            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "N/A"}
+            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "N/A"}
             """;
     }
 
@@ -258,8 +266,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             - You can use tools such as [{string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName))}], but only if you decide to respond.
 
             ## Contextual Information:
-            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "Unknown"}
-            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "Unknown"}
+            - **Guild**: {message.Channel?.Guild?.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild?.Id.ToString() ?? "N/A"}
+            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "N/A"}
 
             Based on the guidelines, your decision should be **TRUE** if you will respond to the message. Otherwise, it should be **FALSE**.
             """;

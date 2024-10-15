@@ -147,27 +147,8 @@ public partial class GuildEvent {
         }
 
         void onChatMessageRemoved(ChatMessage chatMessage) {
-            lock(saveLock) {
-                using var scope = ServiceManager.ServiceProvider!.CreateScope();
-                SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
-
-                var channelData = databaseContent.ChannelDataSet
-                    .Include(channel => channel.ChatMessages)
-                    .FirstOrDefault(channel => channel.ChannelId == channelID);
-
-                if(channelData != null) {
-                    channelData.ChatMessages.Remove(chatMessage.Serialize());
-                    logger.Debug($"Removed ChatMessage from ChannelData: {(chatMessage.Content.Count > 0 ? chatMessage.Content[0].Text : "None")}");
-                } else {
-                    ChannelData newChannelData = new() {
-                        ChannelId = channelID,
-                        ChatMessages = [chatMessage.Serialize()]
-                    };
-
-                    databaseContent.ChannelDataSet.Add(newChannelData);
-                }
-
-                databaseContent.SaveChanges();
+            if(ChatClientServices[channelID].ChatMessages.First().Serialize().Role == ChatMessageRole.Tool) {
+                ChatClientServices[channelID].ChatMessages.RemoveItem();
             }
         }
 

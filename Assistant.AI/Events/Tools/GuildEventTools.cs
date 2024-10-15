@@ -56,7 +56,11 @@ public partial class GuildEvent {
 
     [Description("Add or overwrite a key in the guild memory, Note: The memory not update until next message.")]
     string AddOrOverwriteGuildMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
-        if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id)) {
+        if(toolTrigger.Guild! == null!)
+            return "This command can only be used in a guild.";
+
+
+        if(!GuildMemory.ContainsKey(toolTrigger.Guild.Id)) {
             GuildMemory[toolTrigger.Guild.Id] = [];
             AddEventForGuildMemory(toolTrigger.Guild.Id);
         }
@@ -80,6 +84,9 @@ public partial class GuildEvent {
 
     [Description("Remove a key from the guild memory, Note: The memory not update until next message.")]
     string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
+        if(toolTrigger.Guild! == null!)
+            return "This command can only be used in a guild.";
+
         if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id))
             return $"Guild memory key '{key}' was not found.";
 
