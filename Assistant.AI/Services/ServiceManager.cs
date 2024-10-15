@@ -94,7 +94,7 @@ public static class ServiceManager {
 
                 extension.AddCommands(Assembly.GetExecutingAssembly());
 
-                SlashCommandProcessor slashCommandProcessor = new(new());
+                SlashCommandProcessor slashCommandProcessor = new();
                 TextCommandProcessor textCommandProcessor = new(new() {
                     PrefixResolver = new GuildPrefixResolver("a!").ResolvePrefixAsync
                 });

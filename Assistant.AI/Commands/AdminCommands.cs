@@ -4,30 +4,86 @@ using AssistantAI.ContextChecks;
 using AssistantAI.Services;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extensions;
-using AssistantAI.Utilities.Interfaces;
 using DSharpPlus.Commands;
 using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Commands.Processors.SlashCommands.ArgumentModifiers;
 using DSharpPlus.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using NLog;
 using System.ComponentModel;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace AssistantAI.Commands;
 
-[Command("options")]
-[Description("Options for the guild.")]
-public class OptionsCommands {
-    private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
-    [Command("get")]
-    [Description("Get the current options for the guild.")]
+[Command("admin"), RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
+class AdminCommand {
+    [Command("blacklist-user")]
+    [Description("Blacklist or unblacklist a user from using the AI.")]
     [RequireGuild()]
+    [Cooldown(5)]
+    public static async ValueTask BlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
+        using var scope = ServiceManager.ServiceProvider!.CreateScope();
+        SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
+
+        UserData? userData = await databaseContent.UserDataSet
+            .FirstOrDefaultAsync(u => u.UserId == user.Id);
+
+        GuildData? guildData = await databaseContent.GuildDataSet
+            .Include(g => g.GuildUsers)
+            .FirstOrDefaultAsync(g => g.GuildId == ctx.Guild!.Id);
+
+        GuildUserData? guildUserData = guildData?.GuildUsers
+            .FirstOrDefault(u => u.GuildUserId == user.Id);
+
+        bool guildExists = guildData != null;
+        bool guildUserExists = guildUserData != null;
+
+        userData ??= new UserData {
+            UserId = user.Id
+        };
+
+        guildData ??= new GuildData {
+            GuildId = ctx.Guild!.Id,
+            GuildUsers = []
+        };
+
+        guildUserData ??= new GuildUserData {
+            GuildUserId = user.Id,
+            GuildDataId = guildData.GuildId,
+        };
+
+
+        if(user.IsBot) {
+            await ctx.ResponeTryEphemeral("You can't blacklist a bot.", true);
+            return;
+        } else if(userData.ResponsePermission == AIResponsePermission.Blacklisted) {
+            await ctx.ResponeTryEphemeral("You can't blacklist a user that is globally blacklisted.", true);
+            return;
+        } else if(guildUserData.ResponsePermission == (blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None)) {
+            await ctx.ResponeTryEphemeral($"{user.Mention} is already {(blacklisted ? "blacklisted" : "unblacklisted")} from using the AI.", true);
+            return;
+        }
+
+        guildUserData.ResponsePermission = blacklisted ? AIResponsePermission.Blacklisted : AIResponsePermission.None;
+        if(!guildExists) {
+            databaseContent.Entry(guildData).State = EntityState.Added;
+        } else if(!guildUserExists) {
+            databaseContent.Entry(guildUserData).State = EntityState.Added;
+            guildData.GuildUsers.Add(guildUserData);
+        } else {
+            databaseContent.Entry(guildUserData).State = EntityState.Modified;
+        }
+
+
+
+        databaseContent.SaveChanges();
+
+        await ctx.ResponeTryEphemeral($"{(blacklisted ? "Blacklisted" : "Unblacklisted")} {user.Mention} from using the AI.", true);
+    }
+
+    [Command("option-get"), RequireGuild()]
+    [Description("Get the current options for the guild.")]
     [Cooldown(5)]
     public static async ValueTask GetOptions(CommandContext ctx) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
@@ -76,9 +132,9 @@ public class OptionsCommands {
                     .GetType()
                     .GetMethod("GetPreview");
 
-               string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [options[i]])!;
+                string previewResult = (string)getPreviewMethod!.Invoke(previewInstance, [options[i]])!;
 
-               optionsBuilder.AppendLine($"{optionNames[i]}: **{previewResult}**");
+                optionsBuilder.AppendLine($"{optionNames[i]}: **{previewResult}**");
             }
         }
 
@@ -87,9 +143,8 @@ public class OptionsCommands {
         await ctx.ResponeTryEphemeral(embed, true);
     }
 
-    [Command("edit")]
+    [Command("option-edit")]
     [Description("Edit the options for the guild.")]
-    [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
     [Cooldown(15, 3)]
     public static async ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
@@ -121,7 +176,6 @@ public class OptionsCommands {
 
         var previewInstance = previewMethod?.Invoke(null, null)!;
         if(previewInstance == null) {
-            logger.Error($"Converter for type '{optionType.Name}' not found.");
             await ctx.ResponeTryEphemeral("An error occurred while trying to edit the options.", true);
             return;
         } else {
