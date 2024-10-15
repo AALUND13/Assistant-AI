@@ -7,8 +7,18 @@ namespace AssistantAI.Events;
 
 // All the tools methods of the GuildEvent class.
 public partial class GuildEvent {
-    [Description("Get information about a user.")]
+    private string GetActivity(DiscordActivity activity) {
+        return activity.ActivityType switch {
+            DiscordActivityType.Custom => $"Custom Activity: {activity.RichPresence.State ?? "Unknow"}",
+            DiscordActivityType.ListeningTo => $"Listening on {activity.Name} to {activity.RichPresence.Details}",
+            DiscordActivityType.Playing => $"Playing: {activity.Name}",
+            DiscordActivityType.Streaming => $"Streaming: {activity.Name}",
+            DiscordActivityType.Watching => $"Watching: {activity.Name}",
+            _ => "Unknown Activity"
+        };
+    }
 
+    [Description("Get information about a user. List the user's name, status, and activities.")]
     async Task<string> GetUserInfo([Description("The user ID to get information about.")] ulong userID) {
         DiscordUser? user;
         try {
@@ -16,16 +26,19 @@ public partial class GuildEvent {
         } catch(BadRequestException) {
             return $"User with ID '{userID}' was not found.";
         }
-        
-        string? customActivity = user.Presence?.Activities.FirstOrDefault(activity => activity.ActivityType == DiscordActivityType.Custom)?.RichPresence.State;
+
+        StringBuilder ActivitiesStringBuilder = new();
+        foreach(var activity in user.Presence.Activities) {
+            ActivitiesStringBuilder.Append($"{GetActivity(activity)}\n");
+        }
 
         var stringBuilder = new StringBuilder();
-        stringBuilder.Append($"User: {user.GlobalName ?? user.Username}");
-        stringBuilder.Append($" | Status: {Enum.GetName(user.Presence?.Status ?? DiscordUserStatus.Offline)}");
-        if(customActivity != null)
-            stringBuilder.Append($" | Custom Activity: {customActivity}");
+        stringBuilder.Append($"User: {user.GlobalName ?? user.Username}\n");
+        stringBuilder.Append($"Status: {Enum.GetName(user.Presence?.Status ?? DiscordUserStatus.Offline)}\n");
+        if(ActivitiesStringBuilder.Length > 0)
+            stringBuilder.Append(ActivitiesStringBuilder.ToString());
 
-        return $"[{stringBuilder}]";
+        return $"{stringBuilder}";
     }
 
     //TODO: Make these tools methods with the new chat message system.
