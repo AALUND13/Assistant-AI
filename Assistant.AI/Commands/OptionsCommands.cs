@@ -89,7 +89,6 @@ public class OptionsCommands {
 
     [Command("edit")]
     [Description("Edit the options for the guild.")]
-    [RequireGuild()]
     [RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
     [Cooldown(15, 3)]
     public static async ValueTask EditOptions(CommandContext ctx, [SlashChoiceProvider<OptionsProvider>] string options, string value) {
