@@ -2,6 +2,9 @@
 using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.AiModule.Utilities;
 using AssistantAI.AiModule.Utilities.Extensions;
+using AssistantAI.Resources;
+using AssistantAI.Services;
+using AssistantAI.Utilities;
 using AssistantAI.Utilities.Extensions;
 using DSharpPlus;
 using DSharpPlus.Entities;
@@ -44,6 +47,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly ToolsFunctions<ToolTrigger> toolsFunctions;
 
     private readonly SqliteDatabaseContext databaseContext;
+    private readonly ResourceHandler<Personalitys> personalitys;
 
     private readonly static ConcurrentDictionary<ulong, AIChatClientService> ChatClientServices = [];
 
@@ -54,6 +58,9 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
+
+        personalitys = serviceProvider.GetRequiredService<ResourceHandler<Personalitys>>();
+        personalitys.LoadResource("Resources/Personalitys.xml");
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
@@ -116,26 +123,36 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         if(ChatClientServices.TryAdd(eventArgs.Channel.Id, new AIChatClientService(serviceProvider))) {
             AddEventForMessages(eventArgs.Channel.Id);
         }
-
-
         ChatClientServices[eventArgs.Channel.Id].ChatMessages.AddItem(userChatMessage);
 
-        SystemChatMessage replyDecisionPrompt = ChatMessage.CreateSystemMessage(GenerateReplyDecisionPrompt(eventArgs.Message));
-        SystemChatMessage responePrompt = ChatMessage.CreateSystemMessage(GenerateSystemPrompt(eventArgs.Message));
+        var templateBuilder = new TemplateBuilder()
+            .AddValue("BotName", sender.CurrentUser.Username)
+            .AddValue("BotID", sender.CurrentUser.Id.ToString())
+            .AddValue("OwnerName", sender.CurrentApplication.Owners!.First().GlobalName)
+            .AddValue("OwnerID", sender.CurrentApplication.Owners!.First().Id.ToString())
+            .AddValue("GuildName", eventArgs.Guild?.Name ?? "N/A")
+            .AddValue("GuildID", eventArgs.Guild?.Id.ToString() ?? "N/A")
+            .AddValue("ChannelName", eventArgs.Channel.Name)
+            .AddValue("ChannelID", eventArgs.Channel.Id.ToString())
+            .AddValue("ToolFunctions", string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName)));
 
+        var currestPersonality = personalitys.Resource.PersonalityList.FirstOrDefault(p => p.Name == personalitys.Resource.CurrentPersonality);
+        if (currestPersonality == null) throw new Exception("Personality not found.");
+        string mainPrompt = templateBuilder.BuildTemplate(currestPersonality.MainPrompt);
+        string replyDecisionPrompt = templateBuilder.BuildTemplate(currestPersonality.ReplyDecisionPrompt);
+
+        SystemChatMessage replyDecisionMessage = ChatMessage.CreateSystemMessage(replyDecisionPrompt);
+        SystemChatMessage responeMessages = ChatMessage.CreateSystemMessage(mainPrompt);
         SystemChatMessage userMemory = GenerateUserMemorySystemMessage(eventArgs.Author.Id);
 
         List<ChatMessage> messages = [];
         messages.Add(userMemory);
-        if(eventArgs.Guild != null!) {
+        if(eventArgs.Guild! != null!) {
             SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
             messages.Add(guildMemory);
         }
 
-
-
-        bool shouldReply = await aiDecisionService.PromptAsync([replyDecisionPrompt, ..messages, ..ChatClientServices[eventArgs.Channel.Id].ChatMessages]);
-
+        bool shouldReply = await aiDecisionService.PromptAsync([replyDecisionMessage, ..messages, ..ChatClientServices[eventArgs.Channel.Id].ChatMessages]);
         if(shouldReply) {
             logger.Info("Bot decided to reply. Initiating response...");
             await AddTypingTimerForChannel(eventArgs.Channel);
@@ -143,7 +160,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             var toolTrigger = new ToolTrigger(eventArgs.Guild, eventArgs.Channel, eventArgs.Author, eventArgs.Message.Content);
 
             List<ChatMessage> responseMessages = await ChatClientServices[eventArgs.Channel.Id]
-                .PromptAsync(toolsFunctions, toolTrigger, [responePrompt, ..messages]);
+                .PromptAsync(toolsFunctions, toolTrigger, [responeMessages, ..messages]);
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
 
@@ -224,42 +241,6 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         return chatMessageContentParts;
     }
 
-    private string GenerateSystemPrompt(DiscordMessage message) {
-        return $"""
-            You are a highly capable Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}. Your task is to assist users effectively, using concise and precise communication.
-
-            ## Guidelines for Interaction:
-            - Mention users using the format: `<@USERID>`.
-            - Avoid including your name or ID in your responses unless specifically required by the user.
-            - If a user mentions you directly, respond with: "How can I assist you today?".
-            - Think through each task step by step and provide a clear, short response.
-            - Limit responses to key details; avoid unnecessary elaboration.
-
-            ## Contextual Information:
-            - **Guild**: {message.Channel?.Guild.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild.Id.ToString() ?? "N/A"}
-            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "N/A"}
-            """;
-    }
-
-
-    private string GenerateReplyDecisionPrompt(DiscordMessage message) {
-        return $"""
-            You are a decision-making Discord bot named {client.CurrentUser.Username}, with the ID {client.CurrentUser.Id}. Your task is to determine whether you should respond based on specific criteria.
-
-            ## Guidelines for Reply Decision:
-            - Respond **only** if you are directly mentioned or tagged.
-            - If the message is a question, decide if it’s relevant to your task before responding.
-            - If you are unsure about the answer, do not respond.
-            - If the user mentions you without asking a question, your decision should be **TRUE**.
-            - You can use tools such as [{string.Join(", ", toolsFunctions.ChatTools.Select(tool => tool.FunctionName))}], but only if you decide to respond.
-
-            ## Contextual Information:
-            - **Guild**: {message.Channel?.Guild?.Name ?? "Unknown"} | **Guild ID**: {message.Channel?.Guild?.Id.ToString() ?? "N/A"}
-            - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "N/A"}
-
-            Based on the guidelines, your decision should be **TRUE** if you will respond to the message. Otherwise, it should be **FALSE**.
-        """;
-    }
     private GuildData? GetGuildData(ulong guildId) {
         return databaseContext.GuildDataSet
             .Include(guild => guild.Options)

@@ -3,6 +3,7 @@ using AssistantAI.AiModule.Services.Extensions;
 using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
+using AssistantAI.Resources;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.OptionPreviews;
@@ -79,6 +80,8 @@ public static class ServiceManager {
         IConfigService configService = ServiceProvider.GetRequiredService<IConfigService>();
         configService.LoadConfig();
         logger.Info("Temporary configuration service loaded.");
+
+        services.AddTransient<ResourceHandler<Personalitys>>();
 
         services.AddDbContext<SqliteDatabaseContext>(options =>
             options.UseSqlite("Data Source=database.db"));
