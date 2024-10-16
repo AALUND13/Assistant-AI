@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Concurrent;
 
 namespace AssistantAI.AiModule.Utilities;
 
@@ -36,10 +35,8 @@ public class EventList<T> : IEnumerable<T> where T : notnull {
     }
 
     public bool RemoveItem(T item) {
-        T? removeItem = Items.FirstOrDefault(i => i.Equals(item));
-        if(removeItem != null) {
-            Items.Remove(removeItem);
-            OnItemRemoved?.Invoke(removeItem);
+        if(Items.Remove(item)) {
+            OnItemRemoved?.Invoke(item);
             return true;
         }
 
