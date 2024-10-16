@@ -115,4 +115,56 @@ public partial class GuildEvent {
 
         return stringBuilder.ToString();
     }
+
+    [Description("Send a direct message to a user.")]
+    async Task<string> SendDmToUser(ToolTrigger toolTrigger, [Description("The username to send a message to.")] string username, [Description("The message to send.")] string message) {
+        if(toolTrigger.Guild! == null!)
+            return "This command can only be used in a guild.";
+
+        var member = toolTrigger.Guild!.Members.Where(member => member.Value.Username == username.ToLower()).Select(m => m.Value).FirstOrDefault();
+        if(member! == null!)
+            return $"User '{username}' was not found.";
+
+        return await SendDmToUserID(toolTrigger, member!.Id, message);
+    }
+
+    [Description("Send a direct message to a user.")]
+    async Task<string> SendDmToUserID(ToolTrigger toolTrigger, [Description("The user ID to send a message to.")] ulong userID, [Description("The message to send.")] string message) {
+        if(toolTrigger.Guild! == null!)
+            return "This command can only be used in a guild.";
+
+        GuildData guild = GetGuildData(toolTrigger.Guild.Id)!;
+        GuildUserData? guildUser = guild.GuildUsers.FirstOrDefault(u => u.GuildUserId == userID);
+
+        if((guildUser?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None)
+            return "You do not have permission to send messages to that user.";
+
+        DiscordUser? user;
+        try {
+            user = await client.GetUserAsync(userID);
+        } catch(BadRequestException) {
+            return $"User with ID '{userID}' was not found.";
+        }
+
+        List<ChatMessage> chatMessage = [ChatMessage.CreateAssistantMessage(message)];
+        chatMessage = await AIChatClientService.FitlerMessages(chatMessage, serviceProvider.GetServices<IFilterService>());
+
+        try {
+            await user.SendMessageAsync(chatMessage[0].Content[0].Text);
+
+            if(ChatClientServices.TryAdd(toolTrigger.Channel!.Id, new AIChatClientService(serviceProvider))) {
+                AddEventForMessages(toolTrigger.Channel.Id);
+            }
+
+            ChatClientServices[toolTrigger.Channel.Id].ChatMessages.AddItem(chatMessage[0]);
+
+            logger.Info($"Sent a message to {user.Username}, With the content: {chatMessage[0].Content[0].Text}");
+
+            return "Message sent.";
+        } catch(UnauthorizedException) {
+            return "The user has disabled DMs from server members.";
+        } catch(Exception e) {
+            return $"An error occurred while sending the message: {e.Message}";
+        }
+    }
 }

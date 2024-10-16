@@ -33,7 +33,7 @@ public class AIChatClientService {
         messages.AddRange(ChatMessages.ToList());
 
         var chatMessages = await AiService.PromptAsync(messages);
-        chatMessages = await FitlerMessages(chatMessages);
+        chatMessages = await FitlerMessages(chatMessages, filterServices);
 
         foreach(var item in chatMessages) {
             ChatMessages.AddItem(item);
@@ -55,7 +55,7 @@ public class AIChatClientService {
         messages.AddRange(ChatMessages.ToList());
 
         var chatMessages = await ((IAiResponseToolService<List<ChatMessage>>)AiService).PromptAsync(messages, toolsFunctions, option);
-        chatMessages = await FitlerMessages(chatMessages);
+        chatMessages = await FitlerMessages(chatMessages, filterServices);
 
         foreach(var message in chatMessages) {
             ChatMessages.AddItem(message);
@@ -64,7 +64,7 @@ public class AIChatClientService {
         return chatMessages;
     }
 
-    private async Task<List<ChatMessage>> FitlerMessages(List<ChatMessage> messages) {
+    public static async Task<List<ChatMessage>> FitlerMessages(List<ChatMessage> messages, IEnumerable<IFilterService> filterServices) {
         List<ChatMessage> filteredMessages = new();
         foreach(var message in messages) {
             var textPartIndex = message.Content.ToList().FindIndex(part => part.Text != null);
