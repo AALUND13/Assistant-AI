@@ -1,5 +1,11 @@
-﻿using DSharpPlus.Entities;
+﻿using AssistantAI.AiModule.Services;
+using AssistantAI.AiModule.Services.Interfaces;
+using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using OpenAI.Chat;
+using System;
 using System.ComponentModel;
 using System.Text;
 
@@ -43,7 +49,7 @@ public partial class GuildEvent {
 
     //TODO: Make these tools methods with the new chat message system.
 
-    [Description("Add or overwrite a key in the user memory, Note: The memory not update until next message.")]
+    [Description("Add or overwrite a key in the user memory, Note: The memory not update until next message, Each user has their own memory, Recommend the key be short.")]
     string AddOrOverwriteUserMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(!UserMemory.ContainsKey(toolTrigger.User!.Id)) {
             UserMemory[toolTrigger.User.Id] = [];
@@ -51,10 +57,10 @@ public partial class GuildEvent {
         }
 
         UserMemory[toolTrigger.User.Id].AddItem(new(key, value));
-        return $"User memory key '{key}' has been added or overwritten with value '{value}'.";
+        return $"User memory '{key}' has been added or overwritten with value '{value}'.";
     }
 
-    [Description("Add or overwrite a key in the guild memory, Note: The memory not update until next message.")]
+    [Description("Add or overwrite a key in the guild memory, Note: The memory not update until next message, Each guild has their own memory, Recommend the key be short.")]
     string AddOrOverwriteGuildMemory(ToolTrigger toolTrigger, [Description("The key to add or overwrite.")] string key, [Description("The value to add or overwrite.")] string value) {
         if(toolTrigger.Guild! == null!)
             return "This command can only be used in a guild.";
@@ -66,35 +72,35 @@ public partial class GuildEvent {
         }
 
         GuildMemory[toolTrigger.Guild.Id].AddItem(new(key, value));
-        return $"Guild memory key '{key}' has been added or overwritten with value '{value}'.";
+        return $"Guild memory '{key}' has been added or overwritten with value '{value}'.";
     }
 
-    [Description("Remove a key from the user memory, Note: The memory not update until next message.")]
+    [Description("Remove a key from the user memory, Note: The memory not update until next message, Each user has their own memory.")]
     string RemoveUserMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(!UserMemory.ContainsKey(toolTrigger.User!.Id))
-            return $"User memory key '{key}' was not found.";
+            return $"User memory '{key}' was not found.";
 
         var keyValuePair = UserMemory[toolTrigger.User.Id].FirstOrDefault(keyValuePair => keyValuePair.Key == key);
 
         if(UserMemory[toolTrigger.User.Id].RemoveItem(keyValuePair))
-            return $"User memory key '{key}' has been removed.";
+            return $"User memory '{key}' has been removed.";
 
-        return $"User memory key '{key}' was not found.";
+        return $"User memory '{key}' was not found.";
     }
 
-    [Description("Remove a key from the guild memory, Note: The memory not update until next message.")]
+    [Description("Remove a key from the guild memory, Note: The memory not update until next message, Each guild has their own memory.")]
     string RemoveGuildMemory(ToolTrigger toolTrigger, [Description("The key to remove.")] string key) {
         if(toolTrigger.Guild! == null!)
             return "This command can only be used in a guild.";
 
         if(!GuildMemory.ContainsKey(toolTrigger.Guild!.Id))
-            return $"Guild memory key '{key}' was not found.";
+            return $"Guild memory '{key}' was not found.";
 
         var keyValuePair = GuildMemory[toolTrigger.Guild.Id].FirstOrDefault(keyValuePair => keyValuePair.Key == key);
 
         if(GuildMemory[toolTrigger.Guild.Id].RemoveItem(keyValuePair))
-            return $"Guild memory key '{key}' has been removed.";
-        return $"Guild memory key '{key}' was not found.";
+            return $"Guild memory '{key}' has been removed.";
+        return $"Guild memory '{key}' was not found.";
     }
 
     [Description("Get the user memory.")]

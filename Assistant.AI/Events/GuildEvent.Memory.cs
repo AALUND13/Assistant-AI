@@ -53,16 +53,16 @@ public partial class GuildEvent {
     }
 
     private void LoadMessagesFromDatabase() {
-        Dictionary<ulong, ChannelData> channels = databaseContent.ChannelDataSet
+        Dictionary<ulong, ChannelData> channels = databaseContext.ChannelDataSet
             .Include(channel => channel.ChatMessages)
             .ThenInclude(msg => msg.ToolCalls)
             .ToDictionary(channel => channel.ChannelId, channel => channel);
 
-        Dictionary<ulong, GuildData> guilds = databaseContent.GuildDataSet
+        Dictionary<ulong, GuildData> guilds = databaseContext.GuildDataSet
             .Include(guild => guild.GuildMemory)
             .ToDictionary(guild => guild.GuildId, guild => guild);
 
-        Dictionary<ulong, UserData> users = databaseContent.UserDataSet
+        Dictionary<ulong, UserData> users = databaseContext.UserDataSet
             .Include(user => user.UserMemory)
             .ToDictionary(user => user.UserId, user => user);
 

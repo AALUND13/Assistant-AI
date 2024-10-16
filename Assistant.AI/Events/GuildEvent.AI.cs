@@ -43,18 +43,17 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     private readonly DiscordClient client;
     private readonly ToolsFunctions<ToolTrigger> toolsFunctions;
 
-    private readonly SqliteDatabaseContext databaseContent;
+    private readonly SqliteDatabaseContext databaseContext;
 
     private readonly static ConcurrentDictionary<ulong, AIChatClientService> ChatClientServices = [];
 
     public GuildEvent(IServiceProvider serviceProvider, SqliteDatabaseContext databaseContext) {
         logger.Info("Initializing GuildEvent...");
         this.serviceProvider = serviceProvider;
+        this.databaseContext = databaseContext;
 
         aiDecisionService = serviceProvider.GetRequiredService<IAiResponseService<bool>>();
         client = serviceProvider.GetRequiredService<DiscordClient>();
-
-        this.databaseContent = databaseContext;
 
         toolsFunctions = new ToolsFunctions<ToolTrigger>(new ToolsFunctionsBuilder<ToolTrigger>()
             .WithToolFunction(GetUserInfo)
@@ -63,6 +62,8 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             .WithToolFunction(RemoveGuildMemory)
             .WithToolFunction(RemoveUserMemory)
             .WithToolFunction(GetUserMemory)
+            .WithToolFunction(SendDmToUser)
+            .WithToolFunction(SendDmToUserID)
         );
         List<string> availableTools = toolsFunctions.ChatTools.Select(tool => tool.FunctionName).ToList();
 
@@ -76,31 +77,18 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         logger.Debug("Checking if message should be ignored...");
 
         ulong guildId = eventArgs.Guild != null! ? eventArgs.Guild.Id : 0;
+        GuildData? guildData = guildId == 0 ? GetGuildData(guildId) : null;
+        UserData? userData = GetUserData(eventArgs.Author.Id);
 
-        GuildData? guildData = databaseContent.GuildDataSet
-            .Include(guild => guild.Options)
-            .ThenInclude(guild => guild.ChannelWhitelists)
-            .FirstOrDefault(guild => guild.GuildId == guildId);
-
-
-        if(guildData == null) {
-            logger.Warn("No guild data found for Guild ID: {0}, using default.", eventArgs.Guild?.Id.ToString() ?? "N/A");
-            guildData = new GuildData();
-        }
-
-        // Retrieve user data from the database
-        UserData? userData = databaseContent.UserDataSet.FirstOrDefault(user => (ulong)user.UserId == eventArgs.Author.Id);
-        if(userData == null) {
-            logger.Warn("No user data found for User ID: {0}, using default.", eventArgs.Author.Id);
-            userData = new UserData();
-        }
+        if(guildId != 0 && guildData == null) guildData = new GuildData();
+        if(userData == null) userData = new UserData();
 
         bool guildIgnored = false;
         if(guildId != 0) {
             guildIgnored = eventArgs.Author.IsBot
-            || !guildData.Options.AIEnabled
+            || !guildData!.Options.AIEnabled
             || (guildData.Options.ChannelWhitelists.Count > 0 && !guildData.Options.ChannelWhitelists.Any(c => c.ChannelId == eventArgs.Channel.Id))
-            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
+            || !eventArgs.Channel.PermissionsFor(eventArgs.Guild!.CurrentMember).HasPermission(DiscordPermissions.SendMessages)
             || eventArgs.Message.Content.StartsWith(guildData.Options.Prefix, StringComparison.OrdinalIgnoreCase)
             || (guildData.GuildUsers.FirstOrDefault(u => u.GuildUserId == eventArgs.Author.Id)?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None;
         }
@@ -117,7 +105,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        logger.Info("Handling message event from User ID: {0}, Guild ID: {1}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A");
+        logger.Info("Handling message event from User ID: {0}, Guild ID: {1}, Message: {2}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A", eventArgs.Message.Content);
 
         if(ShouldIgnoreMessage(eventArgs)) {
             logger.Info("Message ignored. No further processing required.");
@@ -270,6 +258,20 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             - **Channel**: {message.Channel?.Name ?? "Unknown"} | **Channel ID**: {message.Channel?.Id.ToString() ?? "N/A"}
 
             Based on the guidelines, your decision should be **TRUE** if you will respond to the message. Otherwise, it should be **FALSE**.
-            """;
+        """;
+    }
+    private GuildData? GetGuildData(ulong guildId) {
+        return databaseContext.GuildDataSet
+            .Include(guild => guild.Options)
+            .ThenInclude(guild => guild.ChannelWhitelists)
+            .Include(guild => guild.GuildUsers)
+            .Include(guild => guild.GuildMemory)
+            .FirstOrDefault(guild => guild.GuildId == guildId);
+    }
+
+    private UserData? GetUserData(ulong userId) {
+        return databaseContext.UserDataSet
+            .Include(user => user.UserMemory)
+            .FirstOrDefault(user => user.UserId == userId);
     }
 }
