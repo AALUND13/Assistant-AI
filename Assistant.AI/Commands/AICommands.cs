@@ -13,11 +13,11 @@ namespace AssistantAI.Commands;
 [Command("ai")]
 [Description("Commands for the AI.")]
 public class AICommands {
-    [Command("ignore-me")]
+    [Command("ignore")]
     [Description("'true' to be ignored by the bot, and 'false' to remove yourself from the ignore list.")]
     [RequireGuild()]
     [Cooldown(5)]
-    public static async ValueTask IgnoreMe(CommandContext ctx, bool ignore = true) {
+    public static async ValueTask IgnoreMe(CommandContext ctx) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
         SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();
 
@@ -48,7 +48,7 @@ public class AICommands {
             GuildDataId = guildData.GuildId,
         };
 
-
+        bool ignore = guildUserData.ResponsePermission != AIResponsePermission.Ignored;
         if(guildUserData.ResponsePermission == AIResponsePermission.Blacklisted) {
             await ctx.ResponeTryEphemeral("You can't ignore yourself if you are blacklisted.", true);
             return;
