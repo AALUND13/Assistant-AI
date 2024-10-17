@@ -13,9 +13,8 @@ namespace AssistantAI.Commands;
 [Command("ai")]
 [Description("Commands for the AI.")]
 public class AICommands {
-    [Command("ignore")]
+    [Command("ignore"), RequireGuild()]
     [Description("'true' to be ignored by the bot, and 'false' to remove yourself from the ignore list.")]
-    [RequireGuild()]
     [Cooldown(5)]
     public static async ValueTask IgnoreMe(CommandContext ctx) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
@@ -75,9 +74,8 @@ public class AICommands {
         await ctx.ResponeTryEphemeral($"AI will {(ignore ? "now" : "no longer")} ignored you.", true);
     }
 
-    [Command("global-blacklist-user")]
+    [Command("global-blacklist-user"), RequireApplicationOwner()]
     [Description("Globally blacklist or unblacklist a user.")]
-    [RequireApplicationOwner()]
     public static async ValueTask GlobalBlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
         SqliteDatabaseContext databaseContent = scope.ServiceProvider.GetRequiredService<SqliteDatabaseContext>();

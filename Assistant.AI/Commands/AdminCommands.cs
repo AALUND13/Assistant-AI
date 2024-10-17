@@ -17,10 +17,10 @@ using System.Text;
 namespace AssistantAI.Commands;
 
 [Command("admin"), RequirePermissions(DiscordPermissions.None, DiscordPermissions.ManageGuild)]
+[Description("Commands for the administrators.")]
 class AdminCommand {
-    [Command("blacklist-user")]
+    [Command("blacklist-user"), RequireGuild()]
     [Description("Blacklist or unblacklist a user from using the AI.")]
-    [RequireGuild()]
     [Cooldown(5)]
     public static async ValueTask BlacklistUser(CommandContext ctx, DiscordUser user, bool blacklisted = true) {
         using var scope = ServiceManager.ServiceProvider!.CreateScope();
