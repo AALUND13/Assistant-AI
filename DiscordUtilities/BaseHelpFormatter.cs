@@ -19,7 +19,6 @@ namespace AssistantAI.DiscordUtilities {
 
             foreach(var helpMessage in helpMessages) {
                 helpMessage.AddComponents(buttons);
-                helpMessage.AddEmbed(helpMessage.Embeds[0]);
             }
 
             return helpMessages.ToList()[args.CategoryIndex];
