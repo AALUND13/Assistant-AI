@@ -13,7 +13,7 @@ namespace AssistantAI.DiscordUtilities {
         public abstract IEnumerable<DiscordMessageBuilder> FormatHelpMessage(Dictionary<string, IEnumerable<Command>> commandCategories, HelpFormatterEventArgs args);
         public abstract Dictionary<string, IEnumerable<Command>> GetCommandCategories(IEnumerable<Command> commands);
 
-        protected DiscordMessageBuilder BuildHelpMessages(CommandsExtension commandsExtension, HelpFormatterEventArgs args) {
+        public DiscordMessageBuilder BuildHelpMessages(CommandsExtension commandsExtension, HelpFormatterEventArgs args) {
             Dictionary<string, IEnumerable<Command>> commandCategories = GetCommandCategories(commandsExtension.Commands.Values);
             IEnumerable<DiscordMessageBuilder> helpMessages = FormatHelpMessage(commandCategories, args);
 

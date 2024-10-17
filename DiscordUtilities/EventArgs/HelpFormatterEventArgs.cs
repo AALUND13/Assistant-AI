@@ -3,11 +3,11 @@ using DSharpPlus.Entities;
 
 namespace AssistantAI.DiscordUtilities.EventArgs {
     public class HelpFormatterEventArgs : System.EventArgs {
-        DiscordGuild? Guild { get; init; }
-        DiscordChannel? Channel { get; init; }
-        DiscordMessage? Message { get; init; }
-        DiscordInteraction? Interaction { get; init; }
-        CommandsExtension? CommandsExtension { get; init; }
+        public DiscordGuild? Guild { get; init; }
+        public DiscordChannel? Channel { get; init; }
+        public DiscordMessage? Message { get; init; }
+        public DiscordInteraction? Interaction { get; init; }
+        public CommandsExtension? CommandsExtension { get; init; }
 
         public int CategoryIndex { get; set; }
     }
