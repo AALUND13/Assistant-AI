@@ -84,7 +84,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
         logger.Debug("Checking if message should be ignored...");
 
         ulong guildId = eventArgs.Guild != null! ? eventArgs.Guild.Id : 0;
-        GuildData? guildData = guildId == 0 ? GetGuildData(guildId) : null;
+        GuildData? guildData = guildId != 0 ? GetGuildData(guildId) : null;
         UserData? userData = GetUserData(eventArgs.Author.Id);
 
         if(guildId != 0 && guildData == null) guildData = new GuildData();
