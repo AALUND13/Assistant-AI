@@ -2,9 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Assistant.AI.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <RootNamespace>AssistantAI.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="DSharpPlus" Version="5.0.0-nightly-02384" />
+		<PackageReference Include="DSharpPlus.Commands" Version="5.0.0-nightly-02384" />
+	</ItemGroup>
 </Project>
