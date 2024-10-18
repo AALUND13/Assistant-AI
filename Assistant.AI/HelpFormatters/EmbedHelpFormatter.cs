@@ -12,6 +12,7 @@ using DSharpPlus.Commands.Trees;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using DSharpPlus.Commands.ContextChecks;
 
 namespace AssistantAI.DiscordUtilities.HelpFormatters;
 public class EmbedHelpFormatter : BaseHelpFormatter {
@@ -50,25 +51,31 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
 
     private static async Task<DiscordMessageBuilder> FormatSingleHelpMessage(IEnumerable<Command> commands, string categoryName, HelpFormatterEventArgs args) {
         TextInfo currentCultureTextInfo = CultureInfo.CurrentCulture.TextInfo;
+        Command rootCommand = GetRootCommand(commands.First());
+
+        DiscordPermissions requireRootCommandPermissions = rootCommand.Attributes
+            .OfType<RequirePermissionsAttribute>()
+            .FirstOrDefault()?.UserPermissions ?? DiscordPermissions.None;
 
         var embedBuilder = new DiscordEmbedBuilder()
             .WithTitle($"Commands in '{currentCultureTextInfo.ToTitleCase(categoryName)}'")
+            .WithDescription($"""
+                The following commands are available in the '**{currentCultureTextInfo.ToTitleCase(categoryName)}**' category.
+                {(categoryName != "No Category" ? $"Required permissions: `{DSharpPlus.Utilities.ToPermissionString(requireRootCommandPermissions)}`" : "")}
+            """)
             .WithColor(DiscordColor.Azure);
 
         SlashCommandProcessor? slashCommandProcessor = args.CommandsExtension!.GetProcessor<SlashCommandProcessor>();
         TextCommandProcessor? textCommandProcessor = args.CommandsExtension!.GetProcessor<TextCommandProcessor>();
 
+
         foreach(var command in commands) {
             var commandInfoBuilder = new StringBuilder();
+            rootCommand = GetRootCommand(command);
 
             if(slashCommandProcessor != null) {
-                Command parentCommand = command;
-                while(parentCommand.Parent != null) {
-                    parentCommand = parentCommand.Parent;
-                }
-
                 var mappedApplicationCommands = slashCommandProcessor.ApplicationCommandMapping;
-                ulong applicationCommandId = mappedApplicationCommands.FirstOrDefault(x => x.Value.Name == parentCommand.Name).Key;
+                ulong applicationCommandId = mappedApplicationCommands.FirstOrDefault(x => x.Value.Name == rootCommand.Name).Key;
 
                 string commandPath = GetCommandPath(command, slashCommandProcessor.Configuration.NamingPolicy);
 
@@ -87,8 +94,15 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
             }
 
             string commandName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Regex.Replace(command.Name, @"[-_]", " "));
-
+                
             commandInfoBuilder.AppendLine();
+            if (categoryName == "No Category") {
+                DiscordPermissions requireCommandPermissions = command.Attributes
+                    .OfType<RequirePermissionsAttribute>()
+                    .FirstOrDefault()?.UserPermissions ?? DiscordPermissions.None;
+
+                commandInfoBuilder.AppendLine($"Permission: `{DSharpPlus.Utilities.ToPermissionString(requireCommandPermissions)}`");
+            }
             commandInfoBuilder.AppendLine($"Description: ```\n{command.Description}\n```");
 
             embedBuilder.AddField(commandName, commandInfoBuilder.ToString());
@@ -111,12 +125,16 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
         return allCommands;
     }
 
-    private static string GetCommandPath(Command command, IInteractionNamingPolicy namingPolicy) {
+    private static Command GetRootCommand(Command command) {
         Command parentCommand = command;
         while(parentCommand.Parent != null) {
             parentCommand = parentCommand.Parent;
         }
 
+        return parentCommand;
+    }
+
+    private static string GetCommandPath(Command command, IInteractionNamingPolicy namingPolicy) {
         string transformCommandName = namingPolicy.TransformText(command.Name, CultureInfo.InvariantCulture);
 
         string[] pathSegments = command.FullName.Split(' ');
