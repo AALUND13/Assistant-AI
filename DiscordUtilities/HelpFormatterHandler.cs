@@ -20,12 +20,12 @@ public class HelpFormatterHandler : IEventHandler<ComponentInteractionCreatedEve
 
     public async Task HandleEventAsync(DiscordClient sender, ComponentInteractionCreatedEventArgs eventArgs) {
         int categoryLength = (await helpFormatter.GetCommandCategories(commandsExtension.Commands.Values)).Count;
-        int currentIndex = categoryIndex.GetOrAdd(eventArgs.Guild.Id, 0);
+        int currentIndex = categoryIndex.GetOrAdd(eventArgs.Message.Id, 0);
 
         if(eventArgs.Id == "previous-category") {
-            categoryIndex[eventArgs.Guild.Id] = currentIndex == 0 ? categoryLength - 1 : currentIndex - 1;
+            categoryIndex[eventArgs.Message.Id] = currentIndex == 0 ? categoryLength - 1 : currentIndex - 1;
         } else if(eventArgs.Id == "next-category") {
-            categoryIndex[eventArgs.Guild.Id] = currentIndex == categoryLength - 1 ? 0 : currentIndex + 1;
+            categoryIndex[eventArgs.Message.Id] = currentIndex == categoryLength - 1 ? 0 : currentIndex + 1;
         } else {
             return;
         }
