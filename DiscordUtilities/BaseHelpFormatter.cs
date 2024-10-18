@@ -6,11 +6,6 @@ using DSharpPlus.Entities;
 namespace AssistantAI.DiscordUtilities;
 
 public abstract class BaseHelpFormatter {
-    private static DiscordButtonComponent[] buttons = [
-        new DiscordButtonComponent(DiscordButtonStyle.Primary, "previous-category", "Previous Category"),
-        new DiscordButtonComponent(DiscordButtonStyle.Primary, "next-category", "Next Category")
-    ];
-
     public abstract Task<IEnumerable<DiscordMessageBuilder>> FormatHelpMessage(Dictionary<string, IEnumerable<Command>> commandCategories, HelpFormatterEventArgs args);
     public abstract Task<Dictionary<string, IEnumerable<Command>>> GetCommandCategories(IEnumerable<Command> commands);
 
@@ -22,7 +17,10 @@ public abstract class BaseHelpFormatter {
             return helpMessages.First();
         } else {
             foreach(var helpMessage in helpMessages) {
-                helpMessage.AddComponents(buttons);
+                helpMessage.AddComponents(new DiscordButtonComponent[] {
+                    new DiscordButtonComponent(DiscordButtonStyle.Primary, "previous-category", "Previous Category"),
+                    new DiscordButtonComponent(DiscordButtonStyle.Primary, "next-category", "Next Category")
+                });
             }
 
             return helpMessages.ToList()[args.CategoryIndex];
