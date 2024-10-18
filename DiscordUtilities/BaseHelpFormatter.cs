@@ -17,11 +17,15 @@ namespace AssistantAI.DiscordUtilities {
             Dictionary<string, IEnumerable<Command>> commandCategories = GetCommandCategories(commandsExtension.Commands.Values);
             IEnumerable<DiscordMessageBuilder> helpMessages = FormatHelpMessage(commandCategories, args);
 
-            foreach(var helpMessage in helpMessages) {
-                helpMessage.AddComponents(buttons);
-            }
+            if(commandCategories.Count == 1) {
+                return helpMessages.First();
+            } else {
+                foreach(var helpMessage in helpMessages) {
+                    helpMessage.AddComponents(buttons);
+                }
 
-            return helpMessages.ToList()[args.CategoryIndex];
+                return helpMessages.ToList()[args.CategoryIndex];
+            }
         }
     }
 }
