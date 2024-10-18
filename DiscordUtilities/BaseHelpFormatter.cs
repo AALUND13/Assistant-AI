@@ -10,12 +10,12 @@ namespace AssistantAI.DiscordUtilities {
             new DiscordButtonComponent(DiscordButtonStyle.Primary, "next-category", "Next Category")
         ];
 
-        public abstract IEnumerable<DiscordMessageBuilder> FormatHelpMessage(Dictionary<string, IEnumerable<Command>> commandCategories, HelpFormatterEventArgs args);
-        public abstract Dictionary<string, IEnumerable<Command>> GetCommandCategories(IEnumerable<Command> commands);
+        public abstract Task<IEnumerable<DiscordMessageBuilder>> FormatHelpMessage(Dictionary<string, IEnumerable<Command>> commandCategories, HelpFormatterEventArgs args);
+        public abstract Task<Dictionary<string, IEnumerable<Command>>> GetCommandCategories(IEnumerable<Command> commands);
 
-        public DiscordMessageBuilder BuildHelpMessages(CommandsExtension commandsExtension, HelpFormatterEventArgs args) {
-            Dictionary<string, IEnumerable<Command>> commandCategories = GetCommandCategories(commandsExtension.Commands.Values);
-            IEnumerable<DiscordMessageBuilder> helpMessages = FormatHelpMessage(commandCategories, args);
+        public async Task<DiscordMessageBuilder> BuildHelpMessages(CommandsExtension commandsExtension, HelpFormatterEventArgs args) {
+            Dictionary<string, IEnumerable<Command>> commandCategories = await GetCommandCategories(commandsExtension.Commands.Values);
+            IEnumerable<DiscordMessageBuilder> helpMessages = await FormatHelpMessage(commandCategories, args);
 
             if(commandCategories.Count == 1) {
                 return helpMessages.First();

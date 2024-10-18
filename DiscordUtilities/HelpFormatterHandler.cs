@@ -18,7 +18,7 @@ namespace AssistantAI.DiscordUtilities {
         }
 
         public async Task HandleEventAsync(DiscordClient sender, ComponentInteractionCreatedEventArgs eventArgs) {
-            int categoryLength = helpFormatter.GetCommandCategories(commandsExtension.Commands.Values).Count;
+            int categoryLength = (await helpFormatter.GetCommandCategories(commandsExtension.Commands.Values)).Count;
             if(eventArgs.Id == "previous-category") {
                 categoryIndex.AddOrUpdate(eventArgs.Guild.Id, 0, (key, value) => value == 0 ? categoryLength - 1 : value - 1);
             } else if(eventArgs.Id == "next-category") {
@@ -35,7 +35,7 @@ namespace AssistantAI.DiscordUtilities {
                 CategoryIndex = categoryIndex[eventArgs.Guild.Id]
             };
 
-            DiscordMessageBuilder helpMessage = helpFormatter.BuildHelpMessages(commandsExtension, args);
+            DiscordMessageBuilder helpMessage = await helpFormatter.BuildHelpMessages(commandsExtension, args);
             await eventArgs.Interaction.CreateResponseAsync(
                 DiscordInteractionResponseType.UpdateMessage,
                 new DiscordInteractionResponseBuilder(helpMessage)
