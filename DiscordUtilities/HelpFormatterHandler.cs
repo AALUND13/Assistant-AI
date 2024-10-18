@@ -36,7 +36,7 @@ public class HelpFormatterHandler : IEventHandler<ComponentInteractionCreatedEve
             User = eventArgs.User,
 
             CommandsExtension = commandsExtension,
-            CategoryIndex = categoryIndex[eventArgs.Guild.Id]
+            CategoryIndex = categoryIndex[eventArgs.Message.Id]
         };
 
         DiscordMessageBuilder helpMessage = await helpFormatter.BuildHelpMessages(commandsExtension, args);
