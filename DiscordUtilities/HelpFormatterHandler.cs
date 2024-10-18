@@ -7,7 +7,7 @@ using System.Collections.Concurrent;
 
 namespace AssistantAI.DiscordUtilities {
     public class HelpFormatterHandler : IEventHandler<ComponentInteractionCreatedEventArgs> {
-        private readonly ConcurrentDictionary<ulong, int> categoryIndex = [];
+        private static readonly ConcurrentDictionary<ulong, int> categoryIndex = [];
 
         private readonly BaseHelpFormatter helpFormatter;
         private readonly CommandsExtension commandsExtension;
@@ -30,7 +30,8 @@ namespace AssistantAI.DiscordUtilities {
             HelpFormatterEventArgs args = new() {
                 Guild = eventArgs.Guild,
                 Channel = eventArgs.Channel,
-                Message = eventArgs.Message,
+                User = eventArgs.User,
+
                 CommandsExtension = commandsExtension,
                 CategoryIndex = categoryIndex[eventArgs.Guild.Id]
             };
