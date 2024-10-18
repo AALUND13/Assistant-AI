@@ -1,18 +1,16 @@
 ﻿using AssistantAI.DiscordUtilities.EventArgs;
-using AssistantAI.DiscordUtilities;
 using AssistantAI.Services;
-using AssistantAI;
-using DSharpPlus.Commands.Processors.SlashCommands.NamingPolicies;
+using DSharpPlus.Commands.ContextChecks;
 using DSharpPlus.Commands.Processors.SlashCommands;
+using DSharpPlus.Commands.Processors.SlashCommands.NamingPolicies;
 using DSharpPlus.Commands.Processors.TextCommands;
+using DSharpPlus.Commands.Trees;
 using DSharpPlus.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Text;
-using DSharpPlus.Commands.Trees;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
-using DSharpPlus.Commands.ContextChecks;
 
 namespace AssistantAI.DiscordUtilities.HelpFormatters;
 public class EmbedHelpFormatter : BaseHelpFormatter {
@@ -94,9 +92,9 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
             }
 
             string commandName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Regex.Replace(command.Name, @"[-_]", " "));
-                
+
             commandInfoBuilder.AppendLine();
-            if (categoryName == "No Category") {
+            if(categoryName == "No Category") {
                 DiscordPermissions requireCommandPermissions = command.Attributes
                     .OfType<RequirePermissionsAttribute>()
                     .FirstOrDefault()?.UserPermissions ?? DiscordPermissions.None;
@@ -111,14 +109,14 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
         return new DiscordMessageBuilder().AddEmbed(embedBuilder);
     }
 
-    private static List<Command> GetSubCommands(Command commandGroup) {
+    private static List<Command> GetSubCommands(Command commands) {
         List<Command> allCommands = [];
 
-        foreach(var command in commandGroup.Subcommands) {
+        foreach(var command in commands.Subcommands) {
             allCommands.Add(command);
 
             if(command.Subcommands.Count != 0)
-                allCommands.AddRange(GetSubCommands(commandGroup));
+                allCommands.AddRange(GetSubCommands(commands));
 
         }
 
