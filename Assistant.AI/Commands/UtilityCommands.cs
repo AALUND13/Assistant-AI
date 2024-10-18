@@ -24,13 +24,13 @@ public class UtilityCommands {
     [Description("Get a list of all the commands.")]
     [Cooldown(5)]
     public static async ValueTask HelpAsync(CommandContext ctx) {
-        DiscordMessageBuilder helpMessagee = await ServiceManager.GetService<BaseHelpFormatter>().BuildHelpMessages(ctx.Extension, new() {
+        DiscordMessageBuilder helpMessage = await ServiceManager.GetService<BaseHelpFormatter>().BuildHelpMessages(ctx.Extension, new() {
             User = ctx.User,
             Guild = ctx.Guild,
             Channel = ctx.Channel,
             CommandsExtension = ctx.Extension
         });
 
-        await ctx.ResponeTryEphemeral(helpMessagee, true);
+        await ctx.ResponeTryEphemeral(helpMessage, true);
     }
 }
