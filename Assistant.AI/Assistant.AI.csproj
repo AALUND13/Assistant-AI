@@ -28,6 +28,7 @@
 	
   <ItemGroup>
     <ProjectReference Include="..\AiModule\AiModule.csproj" />
+    <ProjectReference Include="..\DiscordUtilities\DiscordUtilities.csproj" />
   </ItemGroup>
 	
   <ItemGroup>
