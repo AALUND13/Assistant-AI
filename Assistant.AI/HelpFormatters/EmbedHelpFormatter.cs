@@ -116,7 +116,7 @@ public class EmbedHelpFormatter : BaseHelpFormatter {
             allCommands.Add(command);
 
             if(command.Subcommands.Count != 0)
-                allCommands.AddRange(GetSubCommands(commands));
+                allCommands.AddRange(GetSubCommands(command));
 
         }
 
