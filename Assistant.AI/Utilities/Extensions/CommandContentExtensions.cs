@@ -18,4 +18,11 @@ public static class CommandContentExtensions {
         else
             return ctx.RespondAsync(embed);
     }
+
+    public static ValueTask ResponeTryEphemeral(this CommandContext ctx, DiscordMessageBuilder messageBuilder, bool isEphemeral = false) {
+        if(ctx is SlashCommandContext slashCommandContext)
+            return slashCommandContext.RespondAsync(new DiscordInteractionResponseBuilder(messageBuilder).AsEphemeral(isEphemeral));
+        else
+            return ctx.RespondAsync(messageBuilder);
+    }
 }

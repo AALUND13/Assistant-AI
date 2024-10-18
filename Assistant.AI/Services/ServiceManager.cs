@@ -3,6 +3,8 @@ using AssistantAI.AiModule.Services.Extensions;
 using AssistantAI.AiModule.Services.Interfaces;
 using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
+using AssistantAI.DiscordUtilities;
+using AssistantAI.DiscordUtilities.HelpFormatters;
 using AssistantAI.Resources;
 using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
@@ -81,6 +83,7 @@ public static class ServiceManager {
         configService.LoadConfig();
         logger.Info("Temporary configuration service loaded.");
 
+        services.AddTransient<BaseHelpFormatter, EmbedHelpFormatter>();
         services.AddTransient<ResourceHandler<Personalitys>>();
 
         services.AddDbContext<SqliteDatabaseContext>(options =>
@@ -131,6 +134,8 @@ public static class ServiceManager {
         logger.Debug("Found {Count} event handlers.", handlerTypes.Count);
 
         services.ConfigureEventHandlers(eventHandlingBuilder => {
+            eventHandlingBuilder.AddEventHandlers<HelpFormatterHandler>();
+
             foreach(var handlerType in handlerTypes) {
                 // Use reflection to dynamically call the generic AddEventHandlers<T> method
                 var method = eventHandlingBuilder.GetType().GetMethod("AddEventHandlers")!.MakeGenericMethod(handlerType);
