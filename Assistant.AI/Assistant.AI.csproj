@@ -32,10 +32,6 @@
   </ItemGroup>
 	
   <ItemGroup>
-		<None Update="..\Assemblies\ffmpeg.exe">
-			<TargetPath>ffmpeg.exe</TargetPath>
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
     <None Update=".env">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
