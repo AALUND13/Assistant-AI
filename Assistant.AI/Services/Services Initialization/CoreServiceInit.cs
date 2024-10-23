@@ -1,7 +1,5 @@
 ﻿using AssistantAI.Resources;
 using AssistantAI.Services.Interfaces;
-using AssistantAI.Utilities.OptionPreviews;
-using AssistantAI.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
