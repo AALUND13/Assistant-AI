@@ -1,12 +1,7 @@
-﻿using AssistantAI.AiModule.Services.Default;
-using AssistantAI.AiModule.Services.Extensions;
-using AssistantAI.AiModule.Services.Interfaces;
-using AssistantAI.Commands.Parsing;
+﻿using AssistantAI.Commands.Parsing;
 using AssistantAI.ContextChecks;
 using AssistantAI.DiscordUtilities;
 using AssistantAI.DiscordUtilities.HelpFormatters;
-using AssistantAI.Resources;
-using AssistantAI.Services.Interfaces;
 using AssistantAI.Utilities;
 using AssistantAI.Utilities.OptionPreviews;
 using DSharpPlus;
@@ -18,81 +13,28 @@ using DSharpPlus.Commands.Processors.TextCommands;
 using DSharpPlus.Entities;
 using DSharpPlus.Exceptions;
 using DSharpPlus.Extensions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using NLog;
-using NLog.Extensions.Logging;
 using System.Reflection;
 using System.Text;
 
 namespace AssistantAI.Services;
 
-public static class ServiceManager {
-    public static IServiceProvider? ServiceProvider { get; private set; }
-
-    private readonly static Logger logger = LogManager.GetCurrentClassLogger();
-    private readonly static IServiceCollection services = new ServiceCollection();
-
-    public static void InitializeServices() {
-        ConfigureServices();
-        ServiceProvider = services.BuildServiceProvider();
-        logger.Info("Services initialized.");
-
-        IConfigService configService = GetService<IConfigService>();
-        configService.LoadConfig();
-
-        using(SqliteDatabaseContext context = GetService<SqliteDatabaseContext>()) {
-            context.Database.EnsureCreated();
-        }
-
+public static partial class ServiceManager {
+    private static void InitializeDiscordServices() {
         PreviewManager.RegisterPreview(new BoolPreview());
         PreviewManager.RegisterPreview(new IntPreview());
         PreviewManager.RegisterPreview(new StringPreview());
         PreviewManager.RegisterPreview(new ChannelMentionPreview());
         PreviewManager.RegisterPreview(new ListPreview<ChannelMention>());
 
-        InializeDiscordClient();
+        InitializeDiscordClient();
     }
 
-    private static void InializeDiscordClient() {
-        DiscordClient client = GetService<DiscordClient>();
-        client.ConnectAsync().Wait();
-        logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
-    }
-
-    public static T GetService<T>() where T : notnull {
-        if(ServiceProvider == null) {
-            throw new Exception("Service Manager has not been initialized.");
-        }
-
-        return ServiceProvider.GetRequiredService<T>();
-    }
-
-
-    private static void ConfigureServices() {
-        services.AddLogging(loggerBuilder => {
-            loggerBuilder.ClearProviders();
-            loggerBuilder.AddNLog();
-        });
-
-        services.AddSingleton<IConfigService, ENVConfigService>();
-
-        ServiceProvider = services.BuildServiceProvider(); // Create a temporary service provider to get the config service
-        IConfigService configService = ServiceProvider.GetRequiredService<IConfigService>();
-        configService.LoadConfig();
-        logger.Info("Temporary configuration service loaded.");
-
+    private static void ConfigureDiscordServices(string token) {
         services.AddTransient<BaseHelpFormatter, EmbedHelpFormatter>();
-        services.AddTransient<ResourceHandler<Personalitys>>();
-
-        services.AddDbContext<SqliteDatabaseContext>(options =>
-            options.UseSqlite("Data Source=database.db"));
-
-        services.AddDefaultAiServices(configService.Config.OPENAI_KEY);
 
         logger.Debug("Initializing Discord client services...");
-        services.AddDiscordClient(configService.Config.DISCORD_TOKEN, DiscordIntents.All);
+        services.AddDiscordClient(token, DiscordIntents.All);
         logger.Info("Discord client initialized.");
 
         services.AddCommandsExtension(
@@ -118,12 +60,15 @@ public static class ServiceManager {
         );
         logger.Info("Commands initialized.");
 
-        services.AddSingleton<IFilterService, AIFilterService>();
-
         logger.Debug("Initializing event handlers...");
         ConfigureEventHandlers();
         logger.Info("Event handlers initialized.");
+    }
 
+    private static void InitializeDiscordClient() {
+        DiscordClient client = ServiceProvider.GetRequiredService<DiscordClient>();
+        client.ConnectAsync().Wait();
+        logger.Info($"Connected to Discord as {client.CurrentUser.Username}#{client.CurrentUser.Discriminator}");
     }
 
     private static void ConfigureEventHandlers() {

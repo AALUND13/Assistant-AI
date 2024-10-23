@@ -3,17 +3,17 @@ using AssistantAI.AiModule.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using OpenAI.Chat;
 
-namespace AssistantAI.AiModule.Services.Extensions {
-    public static class IServiceCollectionExtension {
-        public static IServiceCollection AddDefaultAiServices(this IServiceCollection services, string openAiApiKey) {
+namespace AssistantAI.Services {
+    public static partial class ServiceManager {
+        private static void ConfigureAiServices(string openAiKey) {
             services.AddSingleton<IAiResponseToolService<List<ChatMessage>>, ReasoningAiService>();
             services.AddSingleton<IAiResponseService<bool>, DecisionAiService>();
 
             services.Configure<OpenAiConfiguration>(config => {
-                config.ApiKey = openAiApiKey;
+                config.ApiKey = openAiKey;
             });
 
-            return services;
+            services.AddSingleton<IFilterService, AIFilterService>();
         }
     }
 }
