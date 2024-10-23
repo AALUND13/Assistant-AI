@@ -6,5 +6,5 @@ public interface IFilterService {
     /// </summary>
     /// <param name="message">The message to filter.</param>
     /// <returns>The modified message.</returns>
-    public Task<string> FilterAsync(string message);
+    public Task<string?> FilterAsync(string? message);
 }

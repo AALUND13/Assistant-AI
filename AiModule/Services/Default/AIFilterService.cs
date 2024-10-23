@@ -14,7 +14,11 @@ public class AIFilterService : IFilterService {
         this.logger = logger;
     }
 
-    public async Task<string> FilterAsync(string message) {
+    public async Task<string?> FilterAsync(string? message) {
+        if(string.IsNullOrWhiteSpace(message)) {
+            return null;
+        }
+
         bool flagged = (await moderationClient.ClassifyTextAsync(message)).Value.Flagged;
 
         if(flagged) {

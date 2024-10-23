@@ -164,6 +164,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
 
             RemoveTypingTimerForChannel(eventArgs.Channel);
 
+            if(responseMessages.Count == 0) {
+                logger.Warn("No response generated for message: {0}", eventArgs.Message.Content);
+                return;
+            }
+
             var messageBuilder = new DiscordMessageBuilder();
             string response = responseMessages.Last().GetTextMessagePart().Text;
             if(response.Length > 2000) {
