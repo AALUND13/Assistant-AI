@@ -103,6 +103,8 @@ public class GuildOptions {
     // Options.
 
     public bool AIEnabled { get; set; } = true;
+    public bool ShouldAlwaysRespond { get; set; } = false;
+
     public string Prefix { get; set; } = "a!";
     public List<ChannelMention> ChannelWhitelists { get; set; } = [];
 

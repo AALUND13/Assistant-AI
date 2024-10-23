@@ -112,6 +112,9 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
+        GuildData? guildData = GetGuildData(eventArgs.Guild.Id);
+        guildData ??= new GuildData();
+
         logger.Info("Handling message event from User ID: {0}, Guild ID: {1}, Message: {2}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A", eventArgs.Message.Content);
 
         if(ShouldIgnoreMessage(eventArgs)) {
@@ -151,8 +154,11 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
             SystemChatMessage guildMemory = GenerateGuildMemorySystemMessage(eventArgs.Guild.Id);
             messages.Add(guildMemory);
         }
+        
+        bool shouldReply = eventArgs.Channel.IsPrivate
+            || guildData.Options.ShouldAlwaysRespond 
+            || await aiDecisionService.PromptAsync([replyDecisionMessage, ..messages, ..ChatClientServices[eventArgs.Channel.Id].ChatMessages]);
 
-        bool shouldReply = await aiDecisionService.PromptAsync([replyDecisionMessage, ..messages, ..ChatClientServices[eventArgs.Channel.Id].ChatMessages]);
         if(shouldReply) {
             logger.Info("Bot decided to reply. Initiating response...");
             await AddTypingTimerForChannel(eventArgs.Channel);
