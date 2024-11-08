@@ -112,7 +112,7 @@ public partial class GuildEvent : IEventHandler<MessageCreatedEventArgs> {
     }
 
     public async Task HandleEventAsync(DiscordClient sender, MessageCreatedEventArgs eventArgs) {
-        GuildData? guildData = GetGuildData(eventArgs.Guild.Id);
+        GuildData? guildData = GetGuildData(eventArgs.Guild?.Id ?? 0);
         guildData ??= new GuildData();
 
         logger.Info("Handling message event from User ID: {0}, Guild ID: {1}, Message: {2}", eventArgs.Author.Id, eventArgs.Guild?.Id.ToString() ?? "N/A", eventArgs.Message.Content);

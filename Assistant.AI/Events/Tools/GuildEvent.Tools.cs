@@ -134,7 +134,7 @@ public partial class GuildEvent {
             return "This command can only be used in a guild.";
 
         GuildData guild = GetGuildData(toolTrigger.Guild.Id)!;
-        GuildUserData? guildUser = guild.GuildUsers.FirstOrDefault(u => u.GuildUserId == userID);
+        GuildUserData? guildUser = guild?.GuildUsers.FirstOrDefault(u => u.GuildUserId == userID);
 
         if((guildUser?.ResponsePermission ?? AIResponsePermission.None) != AIResponsePermission.None)
             return "You do not have permission to send messages to that user.";

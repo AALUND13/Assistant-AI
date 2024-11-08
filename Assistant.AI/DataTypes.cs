@@ -38,10 +38,12 @@ public class ChannelChatMessageData {
     [Key] public int Id { get; set; }
 
     public required ChatMessageRole Role { get; set; }
-
+    
+#nullable enable
     public string? Text { get; set; }
     public List<ChatToolCallData>? ToolCalls { get; set; }
     public string? ToolCallId { get; set; }
+#nullable disable
 
     [ForeignKey("ChannelData")] public ulong ChannelId { get; set; }
     public ChannelData Channel { get; set; }
